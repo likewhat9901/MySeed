@@ -1,0 +1,31 @@
+---
+description: "전역 프로젝트 원칙 및 AI 가이드라인"
+alwaysApply: true
+---
+
+# 전역 원칙 / AI 가이드
+
+## 스택
+- Frontend: Next.js (App Router), TypeScript, Tailwind  
+- Backend: Python (FastAPI), Supabase (Auth, DB, RLS)
+
+## 로직 경로
+- 가벼운 것: 프론트 (필요 시 Supabase 직접)
+- 무거운 것: Python → DB 반영 → 프론트 조회
+
+## 공통 주의
+- 비밀키·토큰은 커밋하지 않는다.
+
+---
+
+## 프론트엔드 작업 기록 (`.cursor/docs/frontend/` 기준)
+- **CHANGELOG**: 중요 변경 기록 (파일·라인 괄호 안 포함)
+  - 형식: 해당 날짜 `## [YYYY-MM-DD]` 아래 `### Added` / `### Fixed` / `### Changed` 중 해당 항목에 요약 한 줄
+  - 예: `위젯 리사이즈 충돌 감지 (Editor.tsx:163~215)`
+  - 같은 날짜가 있으면 이어서 작성할 것.
+  - 최대한 요약해서 추가 기록이 누적되도 사용자가 한눈에 확인하기 좋게 핵심 정보만 작성.
+- **구조 문서**:
+  - 폴더·라우트·컴포넌트 위치가 바뀌면 → `Structure.md`
+  - 계층·연결이 바뀌면 → `Blueprint.md`
+  - 화면·사용자 플로우가 바뀌면 → `FlowChart.md`
+  - 액터·기능 범위(유스케이스)가 바뀌면 → `UseCase-Diagram.md`

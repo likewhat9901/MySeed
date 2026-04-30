@@ -1,0 +1,9 @@
+// ─── auth/login/page.tsx ──────────────────────────────────────────────────────
+// /auth/login 경로를 홈(/)으로 즉시 리다이렉트.
+// 실제 로그인 폼은 홈 페이지의 LoggedOutView에 있음.
+
+import { redirect } from "next/navigation";
+
+export default function LoginPage() {
+  redirect("/");
+}

@@ -1,0 +1,17 @@
+---
+description: 프론트엔드 주요 규칙
+alwaysApply: false
+globs: ["frontend/**"]
+---
+
+# 프론트
+
+## 폴더 & 파일
+### 공용 파일, 페이지 전용 파일 분리
+- 공용: `src/components/`, `src/hooks/`, `src/types/`
+- 페이지 전용: `(페이지 경로)/_components/`, `(페이지 경로)/_hooks/`
+
+## 컴포넌트 & 스타일
+- 상호작용 多 → `'use client'` / 조회만 → Server Component
+- 스타일: Tailwind (동적값만 inline)
+
