@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
+import { utils } from 'xlsx'
 import type { WorkBook } from 'xlsx'
 
 // ─── ExcelGrid ────────────────────────────────────────────────────────────────
@@ -62,7 +63,6 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, onShe
   const [dragEnd,   setDragEnd]   = useState<CellPos | null>(null)
   const [isDragging, setIsDragging] = useState(false)
 
-  const utils  = require('xlsx').utils
   const sheet  = workbook.Sheets[selectedSheet]
   const data: (string | number | null)[][] = sheet
     ? utils.sheet_to_json(sheet, { header: 1, defval: null })
