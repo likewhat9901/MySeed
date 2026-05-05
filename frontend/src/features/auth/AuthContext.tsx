@@ -99,3 +99,5 @@ export function useAuthContext(): AuthContextValue {
   if (!ctx) throw new Error("useAuthContext는 AuthProvider 하위에서 사용해야 합니다.");
   return ctx;
 }
+
+export const useAuth = useAuthContext;

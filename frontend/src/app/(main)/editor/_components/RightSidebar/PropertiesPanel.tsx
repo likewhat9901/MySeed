@@ -3,10 +3,10 @@
 import { WidgetItem, WidgetStyle, DEFAULT_WIDGET_STYLE } from '@/features/editor/types'
 import { useEditorContext } from '../../_context/EditorContext'
 import { CELL_SIZE } from '../../constants'
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { editorMessages } from '@/lib/i18n/editorMessages'
 
 // ─── PropertiesPanel ─────────────────────────────────────────────────────────
-// PROPERTIES 탭 본문. 선택된 위젯의 LAYOUT / STYLING / DATA SOURCE / ADVANCED 편집.
-// widget이 null이면 안내 메시지를 표시한다.
 
 export default function PropertiesPanel() {
   const {
@@ -15,6 +15,8 @@ export default function PropertiesPanel() {
     onCloseInspector: onClose,
     onUpdateInspector: onUpdate,
   } = useEditorContext()
+  const { locale } = useLocale()
+  const t = editorMessages[locale]
 
   const widget: WidgetItem | null = selectedWidgetId
     ? (widgets.find(w => w.id === selectedWidgetId) ?? null)
@@ -31,7 +33,7 @@ export default function PropertiesPanel() {
     return (
       <div className="flex-1 flex flex-col items-center justify-center gap-2 text-gray-400 px-4 text-center">
         <PropertiesTabIcon />
-        <span className="text-sm mt-1">위젯을 더블클릭하면<br />속성을 편집할 수 있습니다</span>
+        <span className="text-sm mt-1" style={{ whiteSpace: 'pre-line' }}>{t.selectWidget}</span>
       </div>
     )
   }
@@ -40,28 +42,28 @@ export default function PropertiesPanel() {
     <>
       <div className="flex-1 overflow-y-auto">
         {/* LAYOUT */}
-        <Section label="LAYOUT">
+        <Section label={t.sectionLayout}>
           <div className="grid grid-cols-2 gap-2">
             <NumberField
-              label="Width"
+              label={t.fieldWidth}
               unit="px"
               value={widget.w * cellSize}
               onChange={v => onUpdate({ w: Math.max(1, Math.round(v / cellSize)) })}
             />
             <NumberField
-              label="Height"
+              label={t.fieldHeight}
               unit="px"
               value={widget.h * cellSize}
               onChange={v => onUpdate({ h: Math.max(1, Math.round(v / cellSize)) })}
             />
             <NumberField
-              label="Position X"
+              label={t.fieldPositionX}
               unit="px"
               value={widget.x * cellSize}
               onChange={v => onUpdate({ x: Math.round(v / cellSize) })}
             />
             <NumberField
-              label="Position Y"
+              label={t.fieldPositionY}
               unit="px"
               value={widget.y * cellSize}
               onChange={v => onUpdate({ y: Math.round(v / cellSize) })}
@@ -70,9 +72,9 @@ export default function PropertiesPanel() {
         </Section>
 
         {/* STYLING */}
-        <Section label="STYLING">
+        <Section label={t.sectionStyling}>
           <div className="flex items-center justify-between py-1.5">
-            <span className="text-sm text-gray-700">Accent Color</span>
+            <span className="text-sm text-gray-700">{t.accentColor}</span>
             <div className="flex items-center gap-2">
               <span className="text-xs text-gray-400">{widget.style.accentColor}</span>
               <label className="cursor-pointer">
@@ -92,7 +94,7 @@ export default function PropertiesPanel() {
 
           <div className="py-1.5">
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-sm text-gray-700">Border Radius</span>
+              <span className="text-sm text-gray-700">{t.borderRadius}</span>
               <span className="text-xs font-medium text-brand-dark">{widget.style.borderRadius}px</span>
             </div>
             <input
@@ -106,7 +108,7 @@ export default function PropertiesPanel() {
           </div>
 
           <div className="flex items-center justify-between py-1.5">
-            <span className="text-sm text-gray-700">Drop Shadow</span>
+            <span className="text-sm text-gray-700">{t.dropShadow}</span>
             <Toggle
               value={widget.style.dropShadow}
               onChange={v => updateStyle({ dropShadow: v })}
@@ -156,13 +158,13 @@ export default function PropertiesPanel() {
           className="flex-1 py-2.5 text-sm font-semibold text-gray-500 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
           title="위젯 선택 해제"
         >
-          CLOSE
+          {t.closeBtn}
         </button>
         <button
           onClick={() => onUpdate({ style: { ...DEFAULT_WIDGET_STYLE } })}
           className="flex-1 py-2.5 text-sm font-semibold text-gray-600 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors tracking-wide"
         >
-          RESET
+          {t.resetBtn}
         </button>
       </div>
     </>
@@ -181,15 +183,9 @@ function Section({ label, children }: { label: string; children: React.ReactNode
 }
 
 function NumberField({
-  label,
-  unit,
-  value,
-  onChange,
+  label, unit, value, onChange,
 }: {
-  label: string
-  unit: string
-  value: number
-  onChange: (v: number) => void
+  label: string; unit: string; value: number; onChange: (v: number) => void
 }) {
   return (
     <div>
@@ -221,8 +217,6 @@ function Toggle({ value, onChange, disabled }: { value: boolean; onChange: (v: b
     </button>
   )
 }
-
-// ─── Icons ────────────────────────────────────────────────────────────────────
 
 function ChevronDownIcon({ className }: { className?: string }) {
   return (

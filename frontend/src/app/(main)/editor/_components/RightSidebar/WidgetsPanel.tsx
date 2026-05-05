@@ -4,20 +4,22 @@ import { useState } from 'react'
 import { LayoutGrid, List } from 'lucide-react'
 import { WIDGET_REGISTRY, WidgetType } from '@/app/(main)/editor/_widgets/registry'
 import { useEditorContext } from '../../_context/EditorContext'
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { editorMessages } from '@/lib/i18n/editorMessages'
 
 // ─── WidgetsPanel ─────────────────────────────────────────────────────────────
-// WIDGETS 탭 본문. 위젯 카탈로그 — 목록형 / 격자형 토글.
-// 항목 클릭 시 addWidget(type) 호출 → 고스트 배치 모드 진입.
 
 export default function WidgetsPanel() {
   const { addWidget: onAddWidget } = useEditorContext()
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const { locale } = useLocale()
+  const t = editorMessages[locale]
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
       {/* 헤더: 뷰 모드 토글 */}
       <div className="flex items-center justify-between px-3 py-2 border-b border-gray-100 shrink-0">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">위젯 목록</span>
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">{t.widgetList}</span>
         <div className="flex items-center gap-0.5">
           <button
             type="button"
@@ -41,9 +43,9 @@ export default function WidgetsPanel() {
       {/* 위젯 목록 */}
       <div className="flex-1 overflow-y-auto p-3">
         {viewMode === 'grid' ? (
-          <GridView onAddWidget={onAddWidget} />
+          <GridView onAddWidget={onAddWidget} locale={locale} />
         ) : (
-          <ListView onAddWidget={onAddWidget} />
+          <ListView onAddWidget={onAddWidget} locale={locale} cellUnit={t.cellUnit} />
         )}
       </div>
     </div>
@@ -52,10 +54,10 @@ export default function WidgetsPanel() {
 
 // ─── 격자형 뷰 ────────────────────────────────────────────────────────────────
 
-function GridView({ onAddWidget }: { onAddWidget: (type: WidgetType) => void }) {
+function GridView({ onAddWidget, locale }: { onAddWidget: (type: WidgetType) => void; locale: string }) {
   return (
     <div className="grid grid-cols-2 gap-2">
-      {WIDGET_REGISTRY.map(({ type, label, icon: Icon }) => (
+      {WIDGET_REGISTRY.map(({ type, label, labelKo, icon: Icon }) => (
         <button
           key={type}
           type="button"
@@ -66,7 +68,7 @@ function GridView({ onAddWidget }: { onAddWidget: (type: WidgetType) => void }) 
             <Icon className="size-4" />
           </div>
           <span className="text-[10px] font-semibold text-gray-600 group-hover:text-brand-dark leading-tight">
-            {label}
+            {locale === 'ko' ? labelKo : label}
           </span>
         </button>
       ))}
@@ -76,10 +78,10 @@ function GridView({ onAddWidget }: { onAddWidget: (type: WidgetType) => void }) 
 
 // ─── 목록형 뷰 ────────────────────────────────────────────────────────────────
 
-function ListView({ onAddWidget }: { onAddWidget: (type: WidgetType) => void }) {
+function ListView({ onAddWidget, locale, cellUnit }: { onAddWidget: (type: WidgetType) => void; locale: string; cellUnit: string }) {
   return (
     <div className="flex flex-col gap-1">
-      {WIDGET_REGISTRY.map(({ type, label, defaultW, defaultH, icon: Icon }) => (
+      {WIDGET_REGISTRY.map(({ type, label, labelKo, defaultW, defaultH, icon: Icon }) => (
         <button
           key={type}
           type="button"
@@ -91,10 +93,10 @@ function ListView({ onAddWidget }: { onAddWidget: (type: WidgetType) => void }) 
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-gray-700 group-hover:text-brand-dark truncate">
-              {label}
+              {locale === 'ko' ? labelKo : label}
             </p>
             <p className="text-[10px] text-gray-400 mt-0.5">
-              {defaultW} × {defaultH} 셀
+              {defaultW} × {defaultH} {cellUnit}
             </p>
           </div>
         </button>

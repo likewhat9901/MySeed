@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, useState, useEffect, useCallback } from 'react'
-import { useAuth } from '@/features/auth/useAuth'
+import { useAuth } from '@/features/auth/AuthContext'
 import type { LedgerSummary } from '@/features/ledger/api'
 import { updateLedgerCover } from '@/features/ledger/api'
 import { uploadLedgerCover } from '@/lib/supabase/core/storage'

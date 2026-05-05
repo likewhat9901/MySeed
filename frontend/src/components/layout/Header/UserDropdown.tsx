@@ -1,20 +1,10 @@
 "use client";
 
-// ─── components/header/UserDropdown.tsx ───────────────────────────────────────
-// 헤더 우상단 유저 아바타 버튼 + 드롭다운 메뉴.
-//
-// 포함 항목:
-//   - 유저 이름 + 이메일 (상단)
-//   - Account Settings / Preferences 링크
-//   - 로그아웃 버튼
-//
-// 아바타: full_name의 첫 글자 → email 앞부분 첫 글자 순으로 fallback
-
 import Link from "next/link";
 import { useRef, useState, useCallback } from "react";
 import { Settings, UserCog, LogOut } from "lucide-react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
-import { useAuth } from "@/features/auth/useAuth";
+import { useAuth } from "@/features/auth/AuthContext";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { userDropdownMessages } from "@/lib/i18n/headerMessages";
 
@@ -27,15 +17,12 @@ export default function UserDropdown() {
   const close = useCallback(() => setOpen(false), []);
   useOutsideClick(ref, open, close);
 
-  // 표시 이름: user_metadata의 full_name → email 앞부분 순으로 fallback
   const displayName =
     user?.user_metadata?.full_name ||
     user?.email?.split("@")[0] ||
     "사용자";
 
   const displayEmail = user?.email ?? "";
-
-  // 아바타 첫 글자
   const avatarLetter = displayName.charAt(0).toUpperCase();
 
   return (
@@ -52,13 +39,11 @@ export default function UserDropdown() {
 
       {open && (
         <div className="absolute right-0 top-10 w-56 bg-white rounded-2xl shadow-lg border border-gray-100 py-2 z-50">
-          {/* 사용자 정보 */}
           <div className="px-4 py-3 border-b border-gray-100">
             <p className="text-sm font-semibold text-gray-900">{displayName}</p>
             <p className="text-xs text-gray-500 mt-0.5">{displayEmail}</p>
           </div>
 
-          {/* 메뉴 항목 */}
           <div className="py-1">
             <Link
               href="/profile/mypage"
@@ -78,7 +63,6 @@ export default function UserDropdown() {
             </Link>
           </div>
 
-          {/* 로그아웃 */}
           <div className="border-t border-gray-100 pt-1">
             <button
               type="button"

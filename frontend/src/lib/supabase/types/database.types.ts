@@ -114,6 +114,38 @@ export type Database = {
           },
         ]
       }
+      tb_import_mappings: {
+        Row: {
+          map_id: string
+          map_name: string
+          mappings: Json
+          mem_id: string
+          regist_dt: string
+        }
+        Insert: {
+          map_id?: string
+          map_name: string
+          mappings?: Json
+          mem_id: string
+          regist_dt?: string
+        }
+        Update: {
+          map_id?: string
+          map_name?: string
+          mappings?: Json
+          mem_id?: string
+          regist_dt?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tb_import_mappings_mem_id_fkey"
+            columns: ["mem_id"]
+            isOneToOne: false
+            referencedRelation: "tb_member"
+            referencedColumns: ["mem_id"]
+          },
+        ]
+      }
       tb_ledger: {
         Row: {
           cover_url: string | null
@@ -312,21 +344,6 @@ export type Database = {
           },
         ]
       }
-      TEST: {
-        Row: {
-          created_at: string
-          id: number
-        }
-        Insert: {
-          created_at?: string
-          id?: number
-        }
-        Update: {
-          created_at?: string
-          id?: number
-        }
-        Relationships: []
-      }
     }
     Views: {
       [_ in never]: never
@@ -338,6 +355,9 @@ export type Database = {
           led_id: string
         }[]
       }
+      delete_import_mapping:
+        | { Args: { p_map_id: string }; Returns: undefined }
+        | { Args: { p_payload: Json }; Returns: undefined }
       delete_ledger: { Args: { p_led_id: string }; Returns: undefined }
       get_canvas_widgets: {
         Args: { p_led_id: string }
@@ -347,6 +367,25 @@ export type Database = {
           wid_type: string
         }[]
       }
+      get_import_mappings:
+        | {
+            Args: { p_mem_id: string }
+            Returns: {
+              map_id: string
+              map_name: string
+              mappings: Json
+              regist_dt: string
+            }[]
+          }
+        | {
+            Args: { p_payload: Json }
+            Returns: {
+              map_id: string
+              map_name: string
+              mappings: Json
+              regist_dt: string
+            }[]
+          }
       get_my_ledgers: {
         Args: { p_mem_id: string }
         Returns: {
@@ -372,6 +411,19 @@ export type Database = {
           regist_dt: string
         }[]
       }
+      register_import_file:
+        | {
+            Args: { p_file_name: string; p_file_path: string; p_mem_id: string }
+            Returns: {
+              file_id: string
+            }[]
+          }
+        | {
+            Args: { p_payload: Json }
+            Returns: {
+              file_id: string
+            }[]
+          }
       rename_ledger: {
         Args: { p_led_id: string; p_led_name: string }
         Returns: undefined
@@ -380,6 +432,24 @@ export type Database = {
         Args: { p_configs: Json; p_led_id: string }
         Returns: undefined
       }
+      save_import_mapping:
+        | {
+            Args: {
+              p_map_id: string
+              p_map_name: string
+              p_mappings: Json
+              p_mem_id: string
+            }
+            Returns: {
+              map_id: string
+            }[]
+          }
+        | {
+            Args: { p_payload: Json }
+            Returns: {
+              map_id: string
+            }[]
+          }
       update_ledger_cover: {
         Args: { p_cover_url?: string; p_led_id: string }
         Returns: undefined

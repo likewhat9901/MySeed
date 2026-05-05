@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(New-Item -ItemType Directory -Path \"C:\\\\01WorkSpace\\\\moneymoney_260330\\\\frontend\\\\src\\\\components\\\\layout\\\\Header\" -Force)",
+      "Bash(Out-Null)",
+      "Bash(Write-Host \"created\")",
+      "Bash(npx next *)"
+    ]
+  }
+}

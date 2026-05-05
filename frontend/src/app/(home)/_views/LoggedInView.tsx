@@ -2,13 +2,6 @@
 
 // ─── (home)/_views/LoggedInView.tsx ───────────────────────────────────────────
 // 로그인 상태 홈 화면.
-//
-// 구성:
-//   - NewLedgerInput: 새 장부 이름 입력 인라인 컴포넌트 (grid/list 모드 각각)
-//   - LoggedInView: 타이틀 + 장부 목록(grid/list 뷰 전환) + 블루프린트 섹션
-//
-// 상태/로직: useLedgerActions 훅에서 처리 (ledgers, creating, CRUD 핸들러)
-// 장부 아이템 렌더링: LedgerCard(grid) / LedgerRow(list) / LedgerSkeleton(로딩)
 
 import { LayoutGrid, List, Plus, Sparkles, Table2, Database, PieChart } from 'lucide-react'
 import { useState, type RefObject } from 'react'
@@ -16,12 +9,8 @@ import LedgerCard from '../_components/LedgerCard'
 import LedgerRow from '../_components/LedgerRow'
 import LedgerSkeleton from '../_components/LedgerSkeleton'
 import { useLedgerActions } from '../_hooks/useLedgerActions'
-
-const BLUEPRINTS = [
-  { icon: Table2,   title: 'Standard Excel',  sub: 'LEGACY MIGRATION' },
-  { icon: Database, title: 'Notion Canvas',   sub: 'MODULAR DATABASE' },
-  { icon: PieChart, title: 'Portfolio Audit', sub: 'ASSET ALLOCATION' },
-]
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { homeMessages } from '@/lib/i18n/homeMessages'
 
 interface NewLedgerInputProps {
   mode: 'grid' | 'list'
@@ -75,6 +64,8 @@ function NewLedgerInput({ mode, inputRef, value, onChange, onConfirm, onCancel }
 
 export default function LoggedInView() {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
+  const { locale } = useLocale()
+  const t = homeMessages[locale]
   const {
     ledgers,
     loading,
@@ -88,6 +79,12 @@ export default function LoggedInView() {
     handleDelete,
     handleCoverChange,
   } = useLedgerActions()
+
+  const BLUEPRINTS = [
+    { icon: Table2,   title: t.blueprintExcel,     sub: t.blueprintExcelSub },
+    { icon: Database, title: t.blueprintNotion,    sub: t.blueprintNotionSub },
+    { icon: PieChart, title: t.blueprintPortfolio, sub: t.blueprintPortfolioSub },
+  ]
 
   const inputProps: Omit<NewLedgerInputProps, 'mode'> = {
     inputRef: newNameInputRef,
@@ -103,16 +100,14 @@ export default function LoggedInView() {
 
         {/* 타이틀 */}
         <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">My Garden</h1>
-          <p className="mt-2 text-sm text-gray-500">
-            Nurture your wealth through editorial precision. Your financial landscape, curated and growing.
-          </p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">{t.gardenTitle}</h1>
+          <p className="mt-2 text-sm text-gray-500">{t.gardenSub}</p>
         </div>
 
         {/* 장부 목록 */}
         <div className="mb-10">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-700">Saved Ledgers</h2>
+            <h2 className="text-sm font-semibold text-gray-700">{t.savedLedgers}</h2>
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -147,8 +142,8 @@ export default function LoggedInView() {
                     <Plus className="size-5" />
                   </div>
                   <div className="text-center">
-                    <p className="text-sm font-semibold text-gray-800">Start New Ledger</p>
-                    <p className="text-xs text-gray-400 mt-0.5">Excel or Notion import</p>
+                    <p className="text-sm font-semibold text-gray-800">{t.startNewLedger}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{t.newLedgerSub}</p>
                   </div>
                 </button>
               )}
@@ -181,8 +176,8 @@ export default function LoggedInView() {
                     <Plus className="size-4" />
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-semibold text-gray-800">Start New Ledger</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">Excel or Notion import</p>
+                    <p className="text-sm font-semibold text-gray-800">{t.startNewLedger}</p>
+                    <p className="text-[11px] text-gray-400 mt-0.5">{t.newLedgerSub}</p>
                   </div>
                 </button>
               )}
@@ -208,7 +203,7 @@ export default function LoggedInView() {
         <div>
           <h2 className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-3">
             <Sparkles className="size-4 text-brand" />
-            Start from Blueprint
+            {t.startFromBlueprint}
           </h2>
           <div className="flex flex-wrap gap-3">
             {BLUEPRINTS.map(({ icon: Icon, title, sub }) => (

@@ -108,6 +108,16 @@ export type DbCategory = Pick<Tables<'tb_category'>,
   | 'mapping_key'     // 외부 데이터 매핑 키
 >
 
+// ── tb_import_mappings ────────────────────────────────────────────────────────
+// 엑셀 → 위젯 매핑 프리셋 저장 테이블.
+export type DbImportMapping = Pick<Tables<'tb_import_mappings'>,
+  | 'map_id'
+  | 'mem_id'
+  | 'map_name'
+  | 'mappings'   // jsonb: MappingEntry[]
+  | 'regist_dt'
+>
+
 // ── tb_file ───────────────────────────────────────────────────────────────────
 // 업로드된 파일 메타데이터 (영수증 이미지 등).
 // TODO: 파일 첨부 기능 구현 시 필요

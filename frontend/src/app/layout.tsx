@@ -13,7 +13,7 @@ import { cookies } from "next/headers";
 import "./globals.css";
 import Header from '@/components/layout/Header';
 import ReactScanInit from '@/components/ReactScanInit';
-import I18nProvider from '@/lib/i18n/LocaleProvider';
+import I18nProvider from '@/lib/i18n/I18nProvider';
 import { AuthProvider } from '@/features/auth/AuthContext';
 import { getServerUser } from '@/lib/supabase/core/server';
 import type { Locale } from "@/lib/i18n/LocaleContext";

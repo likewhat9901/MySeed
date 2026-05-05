@@ -15,6 +15,7 @@ const CIRCUMFERENCE = 2 * Math.PI * RADIUS
 const DEFAULT: SavingsGoalBinding = { label: '목표 이름', current: 0, target: 1000000 }
 
 function formatKRW(n: number) {
+  if (!n && n !== 0) return '0'
   if (n >= 100000000) return (n / 100000000).toFixed(1).replace(/\.0$/, '') + '억'
   if (n >= 10000) return (n / 10000).toFixed(1).replace(/\.0$/, '') + '만'
   return n.toLocaleString('ko-KR')
@@ -61,7 +62,7 @@ function EditableAmount({ value, isEditing, draft, onDraftChange, onStartEdit, o
 // ─── SavingsGoalWidget ────────────────────────────────────────────────────────
 
 export default function SavingsGoalWidget({ binding, onBindingChange, onBeforeChange }: WidgetComponentProps) {
-  const data = (binding as SavingsGoalBinding | null) ?? DEFAULT
+  const data = { ...DEFAULT, ...(binding as SavingsGoalBinding | null) }
   const percent = data.target > 0 ? Math.min(100, Math.round((data.current / data.target) * 100)) : 0
   const strokeDashoffset = CIRCUMFERENCE * (1 - percent / 100)
 

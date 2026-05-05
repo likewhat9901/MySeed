@@ -1,9 +1,5 @@
 "use client";
 
-// ─── components/header/LocaleSwitcher.tsx ─────────────────────────────────────
-// 헤더 언어 전환 드롭다운 (EN / KO 선택).
-// 선택하면 LocaleContext.setLocale → 쿠키 즉시 갱신 → 다음 SSR에서 반영.
-
 import { useRef, useState, useCallback } from "react";
 import { Check, ChevronDown } from "lucide-react";
 import { useLocale, type Locale } from "@/lib/i18n/LocaleContext";

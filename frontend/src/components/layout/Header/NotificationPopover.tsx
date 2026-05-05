@@ -1,21 +1,10 @@
 "use client";
 
-// ─── components/header/NotificationPopover.tsx ────────────────────────────────
-// 헤더 알림 팝오버 (종 아이콘 클릭 시 열림).
-//
-// 구성:
-//   - NOTIFICATIONS: 더미 데이터 (현재 실제 알림 API 미연결)
-//   - 읽음/안읽음 상태 관리: markRead / markAllRead
-//   - 알림 타입별 색상 점(TYPE_DOT): info=파랑, alert=빨강, success=초록
-//   - 다국어 지원: headerMessages.ts의 notificationMessages 사용
-
 import { useRef, useState, useCallback } from "react";
 import { Bell, CheckCheck } from "lucide-react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { notificationMessages, type NotificationMessages } from "@/lib/i18n/headerMessages";
-
-// ─── 타입 ─────────────────────────────────────────────────────────────────────
 
 type NotifType = "info" | "alert" | "success";
 
@@ -39,8 +28,6 @@ const TYPE_DOT: Record<NotifType, string> = {
   success: "bg-emerald-400",
   info:    "bg-blue-400",
 };
-
-// ─── 컴포넌트 ─────────────────────────────────────────────────────────────────
 
 export default function NotificationPopover() {
   const [open, setOpen] = useState(false);
@@ -82,7 +69,6 @@ export default function NotificationPopover() {
 
       {open && (
         <div className="absolute right-0 top-10 w-80 bg-white rounded-2xl shadow-lg border border-gray-100 z-50 overflow-hidden">
-          {/* 헤더 */}
           <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
             <p className="text-sm font-semibold text-gray-900">{t.notifications}</p>
             {unreadCount > 0 && (
@@ -97,7 +83,6 @@ export default function NotificationPopover() {
             )}
           </div>
 
-          {/* 목록 */}
           <ul className="divide-y divide-gray-50 max-h-72 overflow-y-auto">
             {notifications.map((n) => (
               <li
@@ -115,7 +100,6 @@ export default function NotificationPopover() {
             ))}
           </ul>
 
-          {/* 푸터 */}
           <div className="border-t border-gray-100 px-4 py-2.5">
             <button
               type="button"

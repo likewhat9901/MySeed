@@ -3,14 +3,21 @@
 // 왼쪽: 초록 브랜드 패널 (lg 이상에서만 표시)
 // 오른쪽: SignupPanel 컴포넌트 (이메일 OTP → 비밀번호 설정 플로우)
 
+import { cookies } from "next/headers";
 import SignupPanel from "./_components/SignupPanel";
+import { signupMessages } from "@/lib/i18n/authMessages";
+import type { Locale } from "@/lib/i18n/LocaleContext";
 
 export const metadata = {
   title: "Sign Up — MySeed",
   description: "Create your seed and start your journey toward financial editorial elegance.",
 };
 
-export default function SignupPage() {
+export default async function SignupPage() {
+  const cookieStore = await cookies()
+  const locale = (cookieStore.get("locale")?.value ?? "en") as Locale
+  const t = signupMessages[locale]
+
   return (
     <main className="flex min-h-[calc(100vh-56px)]">
       {/* 왼쪽: 초록 배경 패널 */}
@@ -39,12 +46,10 @@ export default function SignupPage() {
         {/* 중앙: 타이틀 + 설명 */}
         <div className="relative z-10 flex flex-col gap-5">
           <h2 className="text-4xl font-extrabold leading-tight">
-            Cultivate your<br />financial future.
+            {t.brandTitle1}<br />{t.brandTitle2}
           </h2>
           <p className="text-sm text-green-100 leading-relaxed max-w-xs">
-            Every great fortune begins as a small seed. MySeed provides the
-            digital greenhouse to nurture your assets, track growth, and bloom
-            into lasting wealth.
+            {t.brandBody}
           </p>
         </div>
 
@@ -65,7 +70,7 @@ export default function SignupPage() {
             <span className="text-sm font-semibold text-green-200">+12k</span>
           </div>
           <p className="text-xs text-green-200 italic">
-            &ldquo;Join 12,000+ curators managing their digital gardens.&rdquo;
+            &ldquo;{t.brandSocial}&rdquo;
           </p>
         </div>
       </div>

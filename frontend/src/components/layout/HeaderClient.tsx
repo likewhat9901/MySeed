@@ -9,10 +9,10 @@
 //   - 오른쪽: LocaleSwitcher + 로그인 상태에 따라 검색창/알림/유저드롭다운 또는 회원가입 버튼
 
 import Link from "next/link";
-import { useAuth } from "@/features/auth/useAuth";
-import UserDropdown from "@/components/header/UserDropdown";
-import NotificationPopover from "@/components/header/NotificationPopover";
-import LocaleSwitcher from "@/components/header/LocaleSwitcher";
+import { useAuth } from "@/features/auth/AuthContext";
+import UserDropdown from "@/components/layout/Header/UserDropdown";
+import NotificationPopover from "@/components/layout/Header/NotificationPopover";
+import LocaleSwitcher from "@/components/layout/Header/LocaleSwitcher";
 import { useLocale } from "@/lib/i18n/LocaleContext";
 import { navMessages } from "@/lib/i18n/headerMessages";
 

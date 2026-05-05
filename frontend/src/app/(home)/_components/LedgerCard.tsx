@@ -3,8 +3,10 @@
 import Link from 'next/link'
 import { MoreVertical, Pencil, Trash2, ImagePlus, X } from 'lucide-react'
 import type { LedgerSummary } from '@/features/ledger/api'
-import { formatRelativeTime, getThumbColor } from './ledgerUtils'
+import { formatRelativeTime, getThumbColor } from '../_utils/ledgerUtils'
 import { useLedgerItemMenu } from './useLedgerItemMenu'
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { homeMessages } from '@/lib/i18n/homeMessages'
 
 interface Props {
   ledger: LedgerSummary
@@ -16,6 +18,8 @@ interface Props {
 
 export default function LedgerCard({ ledger, index, onRename, onDelete, onCoverChange }: Props) {
   const color = getThumbColor(index)
+  const { locale } = useLocale()
+  const t = homeMessages[locale]
   const {
     menuOpen, setMenuOpen,
     renaming, setRenaming,
@@ -84,14 +88,14 @@ export default function LedgerCard({ ledger, index, onRename, onDelete, onCoverC
                   onClick={() => { setMenuOpen(false); setRenaming(true) }}
                   className="cursor-pointer flex items-center gap-2 w-full px-3 py-1.5 text-gray-700 hover:bg-gray-50"
                 >
-                  <Pencil className="size-3.5 text-gray-400" /> 이름 변경
+                  <Pencil className="size-3.5 text-gray-400" /> {t.rename}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setMenuOpen(false); fileInputRef.current?.click() }}
                   className="cursor-pointer flex items-center gap-2 w-full px-3 py-1.5 text-gray-700 hover:bg-gray-50"
                 >
-                  <ImagePlus className="size-3.5 text-gray-400" /> 커버 변경
+                  <ImagePlus className="size-3.5 text-gray-400" /> {t.changeCover}
                 </button>
                 {ledger.cover_url && (
                   <button
@@ -99,7 +103,7 @@ export default function LedgerCard({ ledger, index, onRename, onDelete, onCoverC
                     onClick={handleRemoveCover}
                     className="cursor-pointer flex items-center gap-2 w-full px-3 py-1.5 text-gray-500 hover:bg-gray-50"
                   >
-                    <X className="size-3.5 text-gray-400" /> 커버 제거
+                    <X className="size-3.5 text-gray-400" /> {t.removeCover}
                   </button>
                 )}
                 <div className="my-1 border-t border-gray-100" />
@@ -108,7 +112,7 @@ export default function LedgerCard({ ledger, index, onRename, onDelete, onCoverC
                   onClick={() => { setMenuOpen(false); onDelete(ledger.led_id) }}
                   className="cursor-pointer flex items-center gap-2 w-full px-3 py-1.5 text-red-500 hover:bg-red-50"
                 >
-                  <Trash2 className="size-3.5" /> 삭제
+                  <Trash2 className="size-3.5" /> {t.delete}
                 </button>
               </div>
             )}

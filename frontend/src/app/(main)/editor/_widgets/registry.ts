@@ -1,5 +1,5 @@
 import type { ComponentType } from 'react'
-import { PiggyBank, Receipt, StickyNote, Quote, TrendingUp, Landmark, LucideIcon } from 'lucide-react'
+import { PiggyBank, Receipt, StickyNote, Quote, TrendingUp, Landmark, Table2, ListChecks, LucideIcon } from 'lucide-react'
 import type { WidgetType, WidgetDataBinding } from '@/features/editor/types'
 import type { WidgetComponentProps } from '../_components/Canvas/WidgetWrapper'
 import SavingsGoalWidget from './SavingsGoalWidget'
@@ -8,6 +8,8 @@ import PostItNoteWidget from './PostItNoteWidget'
 import QuoteWidget from './QuoteWidget'
 import FlowAnalysisWidget from './FlowAnalysisWidget'
 import PortfolioHealthWidget from './PortfolioHealthWidget'
+import TableWidget from './TableWidget'
+import CheckListWidget from './CheckListWidget'
 
 // ─── Widget Registry ──────────────────────────────────────────────────────────
 // 위젯을 추가할 때 이 파일에만 항목을 추가하면 됩니다.
@@ -16,6 +18,7 @@ import PortfolioHealthWidget from './PortfolioHealthWidget'
 export interface WidgetMeta {
   type: string
   label: string
+  labelKo: string
   defaultW: number
   defaultH: number
   minW: number
@@ -28,6 +31,7 @@ export const WIDGET_REGISTRY: WidgetMeta[] = [
   {
     type:      'savings-goal',
     label:     'Savings Goal',
+    labelKo:   '저축 목표',
     defaultW:  5,
     defaultH:  8,
     minW:      4,
@@ -38,6 +42,7 @@ export const WIDGET_REGISTRY: WidgetMeta[] = [
   {
     type:      'monthly-expenses',
     label:     'Monthly Expenses',
+    labelKo:   '월별 지출',
     defaultW:  12,
     defaultH:  6,
     minW:      8,
@@ -48,6 +53,7 @@ export const WIDGET_REGISTRY: WidgetMeta[] = [
   {
     type:      'post-it',
     label:     'Post-it Note',
+    labelKo:   '포스트잇',
     defaultW:  5,
     defaultH:  6,
     minW:      3,
@@ -58,6 +64,7 @@ export const WIDGET_REGISTRY: WidgetMeta[] = [
   {
     type:      'quote',
     label:     'Inspirational Quote',
+    labelKo:   '명언',
     defaultW:  6,
     defaultH:  4,
     minW:      4,
@@ -68,6 +75,7 @@ export const WIDGET_REGISTRY: WidgetMeta[] = [
   {
     type:      'flow-analysis',
     label:     'Flow Analysis',
+    labelKo:   '흐름 분석',
     defaultW:  8,
     defaultH:  5,
     minW:      5,
@@ -78,12 +86,35 @@ export const WIDGET_REGISTRY: WidgetMeta[] = [
   {
     type:      'portfolio-health',
     label:     'Portfolio Health',
+    labelKo:   '포트폴리오 건강도',
     defaultW:  10,
     defaultH:  6,
     minW:      6,
     minH:      4,
     icon:      Landmark,
     component: PortfolioHealthWidget,
+  },
+  {
+    type:      'table',
+    label:     'Table',
+    labelKo:   '테이블',
+    defaultW:  10,
+    defaultH:  7,
+    minW:      6,
+    minH:      5,
+    icon:      Table2,
+    component: TableWidget,
+  },
+  {
+    type:      'check-list',
+    label:     'Check List',
+    labelKo:   '체크리스트',
+    defaultW:  5,
+    defaultH:  8,
+    minW:      3,
+    minH:      5,
+    icon:      ListChecks,
+    component: CheckListWidget,
   },
 ]
 
@@ -104,6 +135,10 @@ export function getDefaultBinding(type: WidgetType): WidgetDataBinding {
       return { text: '"A penny saved is a penny earned."', author: 'BENJAMIN FRANKLIN' }
     case 'savings-goal':
       return { label: '목표 이름', current: 0, target: 1000000 }
+    case 'table':
+      return { columns: ['항목', '값', '비고'], rows: [['', '', ''], ['', '', '']] }
+    case 'check-list':
+      return { title: '체크리스트', items: [{ text: '', checked: false }] }
     default:
       return null
   }

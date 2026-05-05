@@ -15,16 +15,9 @@
 
 import { useState } from 'react'
 import { User, Shield, BarChart2, Bell, ChevronRight, CreditCard } from 'lucide-react'
-import { useAuth } from '@/features/auth/useAuth'
-
-// ─── 사이드바 메뉴 ─────────────────────────────────────────────────────────────
-
-const NAV_ITEMS = [
-  { id: 'personal',  label: 'Personal Info',         icon: User      },
-  { id: 'security',  label: 'Security',               icon: Shield    },
-  { id: 'finance',   label: 'Financial Preferences',  icon: BarChart2 },
-  { id: 'notif',     label: 'Notifications',          icon: Bell      },
-]
+import { useAuth } from '@/features/auth/AuthContext'
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { mypageMessages } from '@/lib/i18n/authMessages'
 
 // ─── Toggle 컴포넌트 ──────────────────────────────────────────────────────────
 
@@ -50,11 +43,20 @@ function Toggle({ defaultOn = false }: { defaultOn?: boolean }) {
 export default function AccountSettingsPage() {
   const [activeNav, setActiveNav] = useState('personal')
   const { user } = useAuth()
+  const { locale } = useLocale()
+  const t = mypageMessages[locale]
+
+  const NAV_ITEMS = [
+    { id: 'personal',  label: t.navPersonal,  icon: User      },
+    { id: 'security',  label: t.navSecurity,  icon: Shield    },
+    { id: 'finance',   label: t.navFinance,   icon: BarChart2 },
+    { id: 'notif',     label: t.navNotif,     icon: Bell      },
+  ]
 
   const displayName = user?.user_metadata?.name ?? user?.email?.split('@')[0] ?? '사용자'
   const email = user?.email ?? '-'
   const memberSince = user?.created_at
-    ? new Date(user.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
+    ? new Date(user.created_at).toLocaleDateString(locale === 'ko' ? 'ko-KR' : 'en-US', { year: 'numeric', month: 'long', day: 'numeric' })
     : '-'
 
   return (
@@ -63,8 +65,8 @@ export default function AccountSettingsPage() {
 
         {/* 페이지 제목 */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Account Settings</h1>
-          <p className="mt-1 text-sm text-gray-500">Manage your personal information and financial preferences.</p>
+          <h1 className="text-3xl font-bold text-gray-900">{t.pageTitle}</h1>
+          <p className="mt-1 text-sm text-gray-500">{t.pageSubtitle}</p>
         </div>
 
         <div className="flex gap-6 items-start">
@@ -108,19 +110,19 @@ export default function AccountSettingsPage() {
               <div className="flex items-center justify-between mb-5">
                 <div className="flex items-center gap-2">
                   <User className="size-4 text-brand" />
-                  <h2 className="text-base font-bold text-gray-900">Personal Information</h2>
+                  <h2 className="text-base font-bold text-gray-900">{t.sectionPersonal}</h2>
                 </div>
                 <button type="button" className="text-sm font-semibold text-brand hover:text-brand-dark cursor-pointer">
-                  Edit All
+                  {t.editAll}
                 </button>
               </div>
               <div className="grid grid-cols-2 gap-x-8 gap-y-5">
-                <InfoField label="FULL NAME"      value={displayName}   />
-                <InfoField label="EMAIL ADDRESS"  value={email}         />
-                <InfoField label="PHONE NUMBER"   value="-"             />
-                <InfoField label="MEMBER SINCE"   value={memberSince}   />
+                <InfoField label={t.fieldFullName}    value={displayName} />
+                <InfoField label={t.fieldEmail}       value={email}       />
+                <InfoField label={t.fieldPhone}       value="-"           />
+                <InfoField label={t.fieldMemberSince} value={memberSince} />
                 <div className="col-span-2">
-                  <InfoField label="PHYSICAL ADDRESS" value="-" />
+                  <InfoField label={t.fieldAddress} value="-" />
                 </div>
               </div>
             </section>
@@ -131,15 +133,15 @@ export default function AccountSettingsPage() {
               <section className="bg-white rounded-2xl border border-gray-200 p-6">
                 <div className="flex items-center gap-2 mb-5">
                   <Shield className="size-4 text-brand" />
-                  <h2 className="text-base font-bold text-gray-900">Security &amp; Privacy</h2>
+                  <h2 className="text-base font-bold text-gray-900">{t.sectionSecurity}</h2>
                 </div>
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between py-2 border-b border-gray-100">
-                    <span className="text-sm text-gray-700">Change Password</span>
+                    <span className="text-sm text-gray-700">{t.changePassword}</span>
                     <ChevronRight className="size-4 text-gray-400" />
                   </div>
-                  <ToggleRow label="Two-Factor Authentication" sub="Recommended for security" defaultOn />
-                  <ToggleRow label="Biometric Login" defaultOn />
+                  <ToggleRow label={t.twoFactor} sub={t.twoFactorSub} defaultOn />
+                  <ToggleRow label={t.biometric} defaultOn />
                 </div>
               </section>
 
@@ -147,19 +149,19 @@ export default function AccountSettingsPage() {
               <section className="bg-white rounded-2xl border border-gray-200 p-6">
                 <div className="flex items-center gap-2 mb-5">
                   <BarChart2 className="size-4 text-brand" />
-                  <h2 className="text-base font-bold text-gray-900">Financial Preferences</h2>
+                  <h2 className="text-base font-bold text-gray-900">{t.sectionFinance}</h2>
                 </div>
                 <div className="flex flex-col gap-4">
                   <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-600">Default Currency</span>
+                    <span className="text-sm text-gray-600">{t.defaultCurrency}</span>
                     <span className="text-sm font-semibold text-brand">USD ($)</span>
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 mb-2">Risk Tolerance</p>
-                    <RiskToggle />
+                    <p className="text-sm text-gray-600 mb-2">{t.riskTolerance}</p>
+                    <RiskToggle labels={[t.riskLow, t.riskModerate, t.riskHigh]} />
                   </div>
                   <div>
-                    <p className="text-sm text-gray-600 mb-2">Linked Accounts</p>
+                    <p className="text-sm text-gray-600 mb-2">{t.linkedAccounts}</p>
                     <div className="flex items-center gap-2 text-sm text-gray-700">
                       <CreditCard className="size-4 text-gray-400" />
                       Chase Checking (...4902)
@@ -173,26 +175,12 @@ export default function AccountSettingsPage() {
             <section className="bg-white rounded-2xl border border-gray-200 p-6">
               <div className="flex items-center gap-2 mb-5">
                 <Bell className="size-4 text-brand" />
-                <h2 className="text-base font-bold text-gray-900">Notification Settings</h2>
+                <h2 className="text-base font-bold text-gray-900">{t.sectionNotif}</h2>
               </div>
               <div className="flex flex-col divide-y divide-gray-100">
-                <ToggleRow
-                  label="Email Notifications"
-                  sub="Stay updated on account activity and market trends."
-                  defaultOn
-                  padded
-                />
-                <ToggleRow
-                  label="Push Notifications"
-                  sub="Real-time alerts for price changes and goal completions."
-                  padded
-                />
-                <ToggleRow
-                  label="Weekly Financial Reports"
-                  sub="Summarized digest of your investment growth every Monday."
-                  defaultOn
-                  padded
-                />
+                <ToggleRow label={t.emailNotif}   sub={t.emailNotifSub}   defaultOn padded />
+                <ToggleRow label={t.pushNotif}    sub={t.pushNotifSub}              padded />
+                <ToggleRow label={t.weeklyReport} sub={t.weeklyReportSub} defaultOn padded />
               </div>
             </section>
 
@@ -202,13 +190,13 @@ export default function AccountSettingsPage() {
                 type="button"
                 className="px-5 py-2.5 text-sm font-medium text-gray-600 hover:text-gray-900 cursor-pointer"
               >
-                Discard Changes
+                {t.discardChanges}
               </button>
               <button
                 type="button"
                 className="px-5 py-2.5 text-sm font-semibold text-white bg-brand-dark hover:bg-brand-darker rounded-xl cursor-pointer"
               >
-                Save Changes
+                {t.saveChanges}
               </button>
             </div>
 
@@ -246,23 +234,22 @@ function ToggleRow({
   )
 }
 
-function RiskToggle() {
-  const [level, setLevel] = useState<'low' | 'moderate' | 'high'>('moderate')
-  const options = ['low', 'moderate', 'high'] as const
+function RiskToggle({ labels }: { labels: [string, string, string] }) {
+  const [level, setLevel] = useState<0 | 1 | 2>(1)
   return (
     <div className="flex gap-1.5">
-      {options.map(opt => (
+      {labels.map((label, idx) => (
         <button
-          key={opt}
+          key={label}
           type="button"
-          onClick={() => setLevel(opt)}
-          className={`px-3 py-1 rounded-full text-xs font-semibold capitalize cursor-pointer transition-colors ${
-            level === opt
+          onClick={() => setLevel(idx as 0 | 1 | 2)}
+          className={`px-3 py-1 rounded-full text-xs font-semibold cursor-pointer transition-colors ${
+            level === idx
               ? 'bg-brand-dark text-white'
               : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
           }`}
         >
-          {opt.charAt(0).toUpperCase() + opt.slice(1)}
+          {label}
         </button>
       ))}
     </div>

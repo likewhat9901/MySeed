@@ -13,7 +13,7 @@
 
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
-import { useAuth } from '@/features/auth/useAuth'
+import { useAuth } from '@/features/auth/AuthContext'
 import { getMyLedgers, createLedger, renameLedger, deleteLedger } from '@/features/ledger/api'
 import type { LedgerSummary } from '@/features/ledger/api'
 

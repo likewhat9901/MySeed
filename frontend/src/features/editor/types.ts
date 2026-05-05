@@ -12,6 +12,8 @@ export type WidgetType =
   | 'quote'
   | 'flow-analysis'
   | 'portfolio-health'
+  | 'table'
+  | 'check-list'
 
 export type ResizeHandle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
 
@@ -53,11 +55,23 @@ export interface SavingsGoalBinding {
   target: number
 }
 
+export interface TableBinding {
+  columns: string[]
+  rows: string[][]
+}
+
+export interface CheckListBinding {
+  title: string
+  items: { text: string; checked: boolean }[]
+}
+
 // DB 집계형 위젯은 data_binding 없음 — null
 export type WidgetDataBinding =
   | PostItBinding
   | QuoteBinding
   | SavingsGoalBinding
+  | TableBinding
+  | CheckListBinding
   | null
 
 export interface WidgetItem {
