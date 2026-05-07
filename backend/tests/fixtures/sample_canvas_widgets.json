@@ -1,0 +1,87 @@
+[
+  {
+    "id": "a58b8c8d-0e1f-4a2b-9c3d-4e5f6a7b8c01",
+    "type": "savings-goal",
+    "x": 48,
+    "y": 48,
+    "w": 320,
+    "h": 200,
+    "style": {
+      "accentColor": "#16a34a",
+      "borderRadius": 12,
+      "dropShadow": true
+    },
+    "data_binding": {
+      "label": "비상금",
+      "current": 120000,
+      "target": 1000000
+    }
+  },
+  {
+    "id": "b68b8c8d-0e1f-4a2b-9c3d-4e5f6a7b8c02",
+    "type": "table",
+    "x": 400,
+    "y": 48,
+    "w": 520,
+    "h": 280,
+    "style": {
+      "accentColor": "#16a34a",
+      "borderRadius": 12,
+      "dropShadow": true
+    },
+    "data_binding": {
+      "columns": ["날짜", "항목", "금액", "메모"],
+      "rows": []
+    }
+  },
+  {
+    "id": "c78b8c8d-0e1f-4a2b-9c3d-4e5f6a7b8c03",
+    "type": "check-list",
+    "x": 48,
+    "y": 280,
+    "w": 300,
+    "h": 240,
+    "style": {
+      "accentColor": "#15803d",
+      "borderRadius": 12,
+      "dropShadow": true
+    },
+    "data_binding": {
+      "title": "이번 달 지출 체크",
+      "items": [{ "text": "예시", "checked": false }]
+    }
+  },
+  {
+    "id": "d88b8c8d-0e1f-4a2b-9c3d-4e5f6a7b8c04",
+    "type": "quote",
+    "x": 400,
+    "y": 360,
+    "w": 280,
+    "h": 140,
+    "style": {
+      "accentColor": "#22c55e",
+      "borderRadius": 16,
+      "dropShadow": true
+    },
+    "data_binding": {
+      "text": "",
+      "author": ""
+    }
+  },
+  {
+    "id": "e98b8c8d-0e1f-4a2b-9c3d-4e5f6a7b8c05",
+    "type": "post-it",
+    "x": 720,
+    "y": 360,
+    "w": 220,
+    "h": 200,
+    "style": {
+      "accentColor": "#fde047",
+      "borderRadius": 8,
+      "dropShadow": false
+    },
+    "data_binding": {
+      "lines": ["메모를 적어보세요"]
+    }
+  }
+]
