@@ -1,1 +1,7 @@
 /supabase/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+

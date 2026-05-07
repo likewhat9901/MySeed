@@ -28,6 +28,7 @@ WIDGET_KEYWORDS: dict[str, list[str]] = {
         "지출",
         "수입",
     ],
+    "check-list": ["check", "todo", "task", "완료", "할일", "체크"],
     "checklist": ["check", "todo", "task", "완료", "할일", "체크"],
     "checkList": ["check", "todo", "task", "완료", "할일", "체크"],
 }
