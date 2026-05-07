@@ -18,15 +18,15 @@ export default function PortfolioHealthWidget(_props: import('../_components/Can
     <div className="flex flex-col h-full p-4 border-2 border-brand rounded-[inherit]">
       {/* 헤더 */}
       <div className="mb-3">
-        <h3 className="text-sm font-bold text-gray-900">Portfolio Health</h3>
+        <h3 className="text-sm font-bold text-gray-900">포트폴리오 건강도</h3>
       </div>
 
       {/* 순자산 + 도넛 게이지 */}
       <div className="flex items-center gap-4 mb-4">
         <div>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wide mb-0.5">Net Worth</p>
+          <p className="text-[10px] font-bold text-gray-400 tracking-wide mb-0.5">순자산</p>
           <p className="text-2xl font-bold text-gray-900">
-            ${DATA.netWorth.toLocaleString()}
+            ₩{DATA.netWorth.toLocaleString('ko-KR')}
           </p>
         </div>
 
@@ -52,18 +52,18 @@ export default function PortfolioHealthWidget(_props: import('../_components/Can
         </div>
       </div>
 
-      {/* Assets / Liabilities 요약 */}
+      {/* 자산 / 부채 요약 */}
       <div className="grid grid-cols-2 gap-2 mt-auto">
         <div className="border border-brand rounded-lg px-3 py-2">
-          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">Assets</p>
+          <p className="text-[9px] font-bold text-gray-400 tracking-wide">자산</p>
           <p className="text-sm font-bold text-brand-dark mt-0.5">
-            ${(DATA.assets / 1000).toFixed(0)}K
+            ₩{(DATA.assets / 10000).toFixed(0)}만
           </p>
         </div>
         <div className="border border-gray-200 rounded-lg px-3 py-2">
-          <p className="text-[9px] font-bold text-gray-400 uppercase tracking-wide">Liabilities</p>
+          <p className="text-[9px] font-bold text-gray-400 tracking-wide">부채</p>
           <p className="text-sm font-bold text-red-600 mt-0.5">
-            ${(DATA.liabilities / 1000).toFixed(0)}K
+            ₩{(DATA.liabilities / 10000).toFixed(0)}만
           </p>
         </div>
       </div>

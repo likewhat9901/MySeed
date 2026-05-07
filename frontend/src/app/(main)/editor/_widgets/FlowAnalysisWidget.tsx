@@ -14,7 +14,7 @@ export default function FlowAnalysisWidget(_props: import('../_components/Canvas
     <div className="flex flex-col h-full p-4">
       {/* 헤더 */}
       <div className="mb-4">
-        <h3 className="text-sm font-bold text-gray-900">Flow Analysis</h3>
+        <h3 className="text-sm font-bold text-gray-900">흐름 분석</h3>
       </div>
 
       {/* 바 차트 */}
@@ -22,7 +22,7 @@ export default function FlowAnalysisWidget(_props: import('../_components/Canvas
         {Object.values(DATA).map(({ label, amount, value, color }) => (
           <div key={label}>
             <div className="flex items-center justify-between mb-1.5">
-              <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{label}</span>
+              <span className="text-[10px] font-bold text-gray-400 tracking-wide">{label}</span>
               <span className="text-xs font-bold text-gray-900">{amount}</span>
             </div>
             <div className="h-3 bg-gray-100 rounded-full overflow-hidden">
@@ -37,9 +37,9 @@ export default function FlowAnalysisWidget(_props: import('../_components/Canvas
 
       {/* 요약 문구 */}
       <p className="mt-4 text-[11px] text-gray-500">
-        You have retained{' '}
+        이번 사이클 총 수입 중{' '}
         <span className="font-bold text-brand">{retainedPct}%</span>
-        {' '}of your total earnings this cycle.
+        {' '}를 저축했습니다.
       </p>
     </div>
   )

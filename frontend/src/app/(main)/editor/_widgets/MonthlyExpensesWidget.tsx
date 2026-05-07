@@ -1,7 +1,6 @@
 'use client'
 
-import { MONTHLY_EXPENSES_DATA } from './widgetData'
-import type { ExpenseRow } from './widgetData'
+import { MONTHLY_EXPENSES_DATA, type ExpenseRow } from './widgetData'
 
 // ─── Monthly Expenses Widget ──────────────────────────────────────────────────
 
@@ -10,17 +9,17 @@ export default function MonthlyExpensesWidget(_props: import('../_components/Can
   return (
     <div className="flex flex-col h-full p-4">
       {/* Header */}
-      <h3 className="text-sm font-semibold text-gray-900 mb-3">Monthly Expenses</h3>
+      <h3 className="text-sm font-semibold text-gray-900 mb-3">월별 지출</h3>
 
       {/* Table */}
       <div className="flex-1 overflow-auto">
         <table className="w-full text-xs">
           <thead>
             <tr className="border-b border-gray-100">
-              <th className="text-left text-gray-400 font-medium pb-2 pr-3">CATEGORY</th>
-              <th className="text-right text-gray-400 font-medium pb-2 pr-3">AMOUNT</th>
-              <th className="text-right text-gray-400 font-medium pb-2 pr-3">DATE</th>
-              <th className="text-right text-gray-400 font-medium pb-2">STATUS</th>
+              <th className="text-left text-gray-400 font-medium pb-2 pr-3">카테고리</th>
+              <th className="text-right text-gray-400 font-medium pb-2 pr-3">금액</th>
+              <th className="text-right text-gray-400 font-medium pb-2 pr-3">날짜</th>
+              <th className="text-right text-gray-400 font-medium pb-2">상태</th>
             </tr>
           </thead>
           <tbody>
@@ -46,17 +45,17 @@ export default function MonthlyExpensesWidget(_props: import('../_components/Can
   )
 }
 
-function StatusBadge({ status }: { status: 'Pending' | 'Paid' }) {
-  if (status === 'Paid') {
+function StatusBadge({ status }: { status: '완료' | '대기' }) {
+  if (status === '완료') {
     return (
       <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-        Paid
+        완료
       </span>
     )
   }
   return (
     <span className="inline-block px-2 py-0.5 rounded-full text-xs font-medium bg-amber-100 text-amber-700">
-      Pending
+      대기
     </span>
   )
 }

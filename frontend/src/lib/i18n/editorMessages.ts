@@ -17,6 +17,10 @@ export const editorMessages = {
     noLedgers:       'No ledgers',
     loading:         'Loading…',
 
+    // RightSidebar tabs
+    tabWidgets:    'WIDGETS',
+    tabProperties: 'PROPERTIES',
+
     // WidgetsPanel
     widgetList: '위젯 목록',
     cellUnit:   'cells',
@@ -63,6 +67,10 @@ export const editorMessages = {
     myLedgersTitle:  '내 장부',
     noLedgers:       '가계부 없음',
     loading:         '불러오는 중…',
+
+    // RightSidebar tabs
+    tabWidgets:    '위젯',
+    tabProperties: '속성',
 
     // WidgetsPanel
     widgetList: '위젯 목록',

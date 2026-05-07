@@ -4,16 +4,10 @@ import { useEditorContext } from '../../_context/EditorContext'
 import { ChevronSideIcon } from '../LeftSidebar/icons'
 import PropertiesPanel from './PropertiesPanel'
 import WidgetsPanel from './WidgetsPanel'
+import { useLocale } from '@/lib/i18n/LocaleContext'
+import { editorMessages } from '@/lib/i18n/editorMessages'
 
 type TabId = 'widgets' | 'properties'
-
-// ─── RightSidebar ────────────────────────────────────────────────────────────
-// 오른쪽 사이드바. EditorContext에서 상태·핸들러를 직접 읽어 사용.
-
-const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
-  { id: 'widgets',    label: 'WIDGETS',    icon: <WidgetsTabIcon /> },
-  { id: 'properties', label: 'PROPERTIES', icon: <PropertiesTabIcon /> },
-]
 
 export default function RightSidebar() {
   const {
@@ -22,6 +16,13 @@ export default function RightSidebar() {
     setRightActiveTab: onTabChange,
     handleRightToggle: onToggle,
   } = useEditorContext()
+  const { locale } = useLocale()
+  const t = editorMessages[locale]
+
+  const TABS: { id: TabId; label: string; icon: React.ReactNode }[] = [
+    { id: 'widgets',    label: t.tabWidgets,    icon: <WidgetsTabIcon /> },
+    { id: 'properties', label: t.tabProperties, icon: <PropertiesTabIcon /> },
+  ]
   function handleTabIconClick(tabId: TabId) {
     if (!isOpen) {
       onTabChange(tabId)

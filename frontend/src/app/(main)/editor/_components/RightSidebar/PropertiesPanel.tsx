@@ -116,39 +116,6 @@ export default function PropertiesPanel() {
           </div>
         </Section>
 
-        {/* DATA SOURCE — 미구현 */}
-        <Section label="DATA SOURCE">
-          <div className="relative opacity-40">
-            <select
-              disabled
-              className="w-full text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 pr-8 appearance-none cursor-not-allowed"
-              defaultValue="bank-api"
-            >
-              <option value="bank-api">Bank API Connection</option>
-              <option value="manual">Manual Input</option>
-              <option value="csv">CSV Import</option>
-            </select>
-            <ChevronDownIcon className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-          </div>
-        </Section>
-
-        {/* ADVANCED — 미구현 */}
-        <Section label="ADVANCED">
-          <div className="flex items-start justify-between py-1.5">
-            <div>
-              <p className="text-sm text-gray-700">Show Smart Insights</p>
-              <p className="text-xs text-gray-400 mt-0.5">Contextual tips for this widget</p>
-            </div>
-            <Toggle value={true} onChange={() => {}} disabled />
-          </div>
-          <div className="flex items-start justify-between py-1.5">
-            <div>
-              <p className="text-sm text-gray-700">Auto-update</p>
-              <p className="text-xs text-gray-400 mt-0.5">Sync every 24 hours</p>
-            </div>
-            <Toggle value={false} onChange={() => {}} disabled />
-          </div>
-        </Section>
       </div>
 
       {/* 하단: 닫기 + 리셋 */}
@@ -203,38 +170,18 @@ function NumberField({
   )
 }
 
-function Toggle({ value, onChange, disabled }: { value: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+function Toggle({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
+      type="button"
       role="switch"
       aria-checked={value}
-      onClick={() => !disabled && onChange(!value)}
-      className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${value ? 'bg-green-600' : 'bg-gray-200'} ${disabled ? 'opacity-40 cursor-not-allowed' : ''}`}
+      onClick={() => onChange(!value)}
+      className={`relative w-10 h-5 rounded-full transition-colors shrink-0 ${value ? 'bg-green-600' : 'bg-gray-200'}`}
     >
       <span
         className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${value ? 'translate-x-5' : 'translate-x-0.5'}`}
       />
     </button>
-  )
-}
-
-function ChevronDownIcon({ className }: { className?: string }) {
-  return (
-    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" className={className}>
-      <path d="M6 9l6 6 6-6" />
-    </svg>
-  )
-}
-
-function PropertiesTabIcon() {
-  return (
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-      <line x1="4" y1="6" x2="20" y2="6" />
-      <line x1="4" y1="12" x2="20" y2="12" />
-      <line x1="4" y1="18" x2="20" y2="18" />
-      <circle cx="8" cy="6" r="2" fill="currentColor" stroke="none" />
-      <circle cx="16" cy="12" r="2" fill="currentColor" stroke="none" />
-      <circle cx="10" cy="18" r="2" fill="currentColor" stroke="none" />
-    </svg>
   )
 }
