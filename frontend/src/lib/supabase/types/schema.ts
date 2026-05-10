@@ -114,7 +114,7 @@ export type DbImportMapping = Pick<Tables<'tb_import_mappings'>,
   | 'map_id'
   | 'mem_id'
   | 'map_name'
-  | 'mappings'   // jsonb: MappingEntry[]
+  | 'mappings'   // jsonb: MappingEntry[] (con_id 기준; 구 저장분 widget_id는 클라에서 정규화)
   | 'regist_dt'
 >
 

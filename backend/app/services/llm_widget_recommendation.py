@@ -8,7 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from openai import AsyncOpenAI
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import AliasChoices, BaseModel, Field, ValidationError
 
 from app.core.config import get_settings
 
@@ -29,7 +29,7 @@ WIDGET_GUIDE = (
 
 
 class WidgetRecommendation(BaseModel):
-    widget_id: str
+    con_id: str = Field(validation_alias=AliasChoices("con_id", "widget_id"))
     sheet: str
     address: str
     aggregation: str = Field(default="none")
@@ -60,10 +60,10 @@ async def recommend_widget_mappings(
         "Prefer ranges that exclude header rows for numeric data, and include the header row only for tables.\n\n"
         + WIDGET_GUIDE
         + '\nRespond ONLY with compact JSON: {"recommendations":[{'
-        '"widget_id":"<uuid>","sheet":"<exact sheet name>","address":"A2:A50",'
+        '"con_id":"<uuid>","sheet":"<exact sheet name>","address":"A2:A50",'
         '"aggregation":"sum","display_form":"single","reason":"한국어 한 문장",'
         '"confidence":0.0-1.0}]} '
-        "Include every widget_id from the input exactly once."
+        "Include every con_id from the input exactly once (tb_widget_config PK)."
     )
     user = (
         f"widgets:\n{widget_lines}\n\n"
@@ -96,7 +96,7 @@ async def recommend_widget_mappings(
     out: list[WidgetRecommendation] = []
     for rec in parsed.recommendations:
         try:
-            UUID(rec.widget_id.strip())
+            UUID(rec.con_id.strip())
         except ValueError:
             continue
         out.append(rec)

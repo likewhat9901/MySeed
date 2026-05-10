@@ -86,13 +86,13 @@ export default function ImportMapper({ onClose }: Props) {
     if (!widget) return
 
     const entry: MappingEntry = {
-      widget_id:   selectedWidget,
+      con_id:      selectedWidget,
       widget_type: widget.type,
       sheet:       activeSheet,
       address:     selectedAddr,
     }
     setMappings(prev => {
-      const next = [...prev.filter(m => m.widget_id !== selectedWidget), entry]
+      const next = [...prev.filter(m => m.con_id !== selectedWidget), entry]
       setIsDirty(true)
       return next
     })
@@ -106,7 +106,7 @@ export default function ImportMapper({ onClose }: Props) {
     const sheet = workbook.Sheets[entry.sheet]
     if (!sheet) return
     const data: (string | number | null)[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: null })
-    const widget = widgets.find(w => w.id === entry.widget_id)
+    const widget = widgets.find(w => w.id === entry.con_id)
     if (!widget) return
     const parsed = parseAddressToValues(data, entry.address)
     if (!parsed) return
@@ -126,11 +126,11 @@ export default function ImportMapper({ onClose }: Props) {
     } else if (widget.type === 'post-it') {
       next = { ...next, lines: parsed.values.map(v => String(v ?? '')) }
     }
-    updateWidgetData(entry.widget_id, next as typeof binding)
+    updateWidgetData(entry.con_id, next as typeof binding)
   }
 
   function removeMapping(widgetId: string) {
-    setMappings(prev => prev.filter(m => m.widget_id !== widgetId))
+    setMappings(prev => prev.filter(m => m.con_id !== widgetId))
     setIsDirty(true)
   }
 
@@ -345,11 +345,11 @@ export default function ImportMapper({ onClose }: Props) {
             {mappings.map(m => {
               const widgetLabel = WIDGET_LABELS[m.widget_type] ?? m.widget_type
               return (
-                <span key={m.widget_id} className="flex items-center gap-1 text-[11px] bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5">
+                <span key={m.con_id} className="flex items-center gap-1 text-[11px] bg-green-50 text-green-700 border border-green-200 rounded-full px-2 py-0.5">
                   <span className="font-medium truncate max-w-[80px]" title={widgetLabel}>{widgetLabel}</span>
                   <span className="text-green-400">→</span>
                   <span className="font-mono">{m.address}</span>
-                  <button onClick={() => removeMapping(m.widget_id)} className="text-green-400 hover:text-red-400 leading-none ml-0.5">
+                  <button onClick={() => removeMapping(m.con_id)} className="text-green-400 hover:text-red-400 leading-none ml-0.5">
                     <X size={10} />
                   </button>
                 </span>

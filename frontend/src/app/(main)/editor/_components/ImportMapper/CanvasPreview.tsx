@@ -27,7 +27,7 @@ const MIN_SCALE     = 0.2
 const MAX_SCALE     = 4
 
 export default function CanvasPreview({ widgets, selectedId, mappings, onSelect }: Props) {
-  const mappedIds    = new Set(mappings.map(m => m.widget_id))
+  const mappedIds    = new Set(mappings.map(m => m.con_id))
   const containerRef = useRef<HTMLDivElement>(null)
 
   // 기준 셀 크기 (패널 fit 시 계산, 이후 scale이 곱해짐)

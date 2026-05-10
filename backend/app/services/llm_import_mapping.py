@@ -8,7 +8,7 @@ from typing import Any
 from uuid import UUID
 
 from openai import AsyncOpenAI
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import AliasChoices, BaseModel, Field, ValidationError
 
 from app.core.config import get_settings
 from app.services.import_mapping_service import suggest_mapping_address
@@ -17,7 +17,7 @@ logger = logging.getLogger(__name__)
 
 
 class _LLMSuggestionRow(BaseModel):
-    widget_id: str
+    con_id: str = Field(validation_alias=AliasChoices("con_id", "widget_id"))
     address: str
     confidence: float = Field(default=0.85, ge=0.0, le=1.0)
     reason: str = ""
@@ -63,7 +63,7 @@ async def suggest_addresses_with_llm(
     payload = {
         "headers": headers,
         "sample_rows": sample_rows,
-        "widgets": [{"widget_id": str(wid), "widget_type": normalize_widget_type(wtype)} for wid, wtype in widgets],
+        "widgets": [{"con_id": str(wid), "widget_type": normalize_widget_type(wtype)} for wid, wtype in widgets],
     }
 
     system = (
@@ -76,9 +76,9 @@ async def suggest_addresses_with_llm(
         "- check-list: one text column for item labels.\n"
         "- quote: one cell or column with main quote text (prefer first meaningful text cell).\n"
         "- post-it: column or block of text lines in reading order (row-major).\n"
-        "Respond ONLY with compact JSON: {\"suggestions\":[{\"widget_id\":\"<uuid>\",\"address\":\"...\","
+        "Respond ONLY with compact JSON: {\"suggestions\":[{\"con_id\":\"<uuid>\",\"address\":\"...\","
         "\"confidence\":0.0-1.0,\"reason\":\"short Korean\"}]} "
-        "Include every widget_id from the input exactly once."
+        "Include every con_id from the input exactly once."
     )
     user = f"sheet name (metadata only): {sheet}\nwidgets:\n{widget_lines}\n\ndata json: {json.dumps(payload, ensure_ascii=False)}"
 
@@ -108,7 +108,7 @@ async def suggest_addresses_with_llm(
     llm_by_id: dict[UUID, tuple[str, float, str]] = {}
     for row in parsed.suggestions:
         try:
-            uid = UUID(row.widget_id.strip())
+            uid = UUID(row.con_id.strip())
         except ValueError:
             continue
         addr = row.address.strip().upper().replace("$", "")
@@ -147,7 +147,6 @@ def ensure_addresses_parse(
             headers=headers,
             sample_rows=sample_rows,
         )
-        _ = sheet_range  # same grid bounds; unused here
         out[wid] = (
             fallback,
             fb_conf,

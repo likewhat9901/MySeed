@@ -5,6 +5,14 @@
 
 ---
 
+## [2026-05-10]
+
+### Changed
+
+- **매핑 엔트리 키**: `MappingEntry.widget_id` → `con_id` (tb_widget_config PK와 일치), DB에 `widget_id`로 저장된 기존 프리셋은 로드 시 정규화 (`features/import/api.ts`, ImportMapper)
+
+---
+
 ## [2026-04-27]
 
 ### Added

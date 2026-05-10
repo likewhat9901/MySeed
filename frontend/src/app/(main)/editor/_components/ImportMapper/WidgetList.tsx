@@ -15,7 +15,7 @@ interface Props {
 }
 
 export default function WidgetList({ widgets, selectedId, mappings, onSelect }: Props) {
-  const mappedIds = new Set(mappings.map(m => m.widget_id))
+  const mappedIds = new Set(mappings.map(m => m.con_id))
 
   return (
     <div className="flex flex-col h-full">

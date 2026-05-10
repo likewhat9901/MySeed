@@ -10,10 +10,34 @@ import type { WidgetType } from '@/features/editor/types'
 // ── 타입 ──────────────────────────────────────────────────────────────────────
 
 export interface MappingEntry {
-  widget_id:   string
+  con_id: string
   widget_type: WidgetType
-  sheet:       string
-  address:     string
+  sheet: string
+  address: string
+}
+
+function normalizeMappingEntry(raw: unknown): MappingEntry | null {
+  if (!raw || typeof raw !== 'object') return null
+  const o = raw as Record<string, unknown>
+  const id = o.con_id ?? o.widget_id
+  if (
+    id == null ||
+    typeof o.widget_type !== 'string' ||
+    typeof o.sheet !== 'string' ||
+    typeof o.address !== 'string'
+  )
+    return null
+  return {
+    con_id: String(id),
+    widget_type: o.widget_type as WidgetType,
+    sheet: o.sheet,
+    address: o.address,
+  }
+}
+
+function normalizeMappingEntries(raw: unknown): MappingEntry[] {
+  if (!Array.isArray(raw)) return []
+  return raw.map(normalizeMappingEntry).filter((e): e is MappingEntry => e != null)
 }
 
 export interface ImportMapping {
@@ -71,7 +95,7 @@ export async function getImportMappings(memId: string): Promise<ImportMapping[]>
   return rows.map(row => ({
     map_id:    row.map_id,
     map_name:  row.map_name,
-    mappings:  row.mappings as MappingEntry[],
+    mappings:  normalizeMappingEntries(row.mappings),
     regist_dt: row.regist_dt,
   }))
 }

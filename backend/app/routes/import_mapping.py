@@ -3,7 +3,7 @@ from typing import Any
 from uuid import UUID, uuid4
 
 from fastapi import APIRouter, Body, File, Form, HTTPException, UploadFile
-from pydantic import BaseModel, Field
+from pydantic import AliasChoices, BaseModel, Field
 
 from app.core.config import get_settings
 from app.services.aggregation import normalize_aggregation
@@ -38,7 +38,7 @@ router = APIRouter(tags=["import-mapping"])
 
 
 class WidgetTarget(BaseModel):
-    widget_id: UUID
+    con_id: UUID = Field(validation_alias=AliasChoices("con_id", "widget_id"))
     widget_type: str
 
 
@@ -67,14 +67,14 @@ class ImportMappingSuggestRequest(BaseModel):
 
 
 class MappingSuggestion(BaseModel):
-    widget_id: UUID
+    con_id: UUID
     widget_type: str
     sheet: str
     address: str
 
 
 class MappingInsight(BaseModel):
-    widget_id: UUID
+    con_id: UUID
     widget_type: str
     sheet_range: str
     confidence: float
@@ -122,11 +122,11 @@ async def suggest_import_mappings(
                     ],
                     "widgets": [
                         {
-                            "widget_id": "9c39c8fd-24b1-42a7-af54-7e9372fa0021",
+                            "con_id": "9c39c8fd-24b1-42a7-af54-7e9372fa0021",
                             "widget_type": "savings-goal",
                         },
                         {
-                            "widget_id": "09af7b57-6995-4c88-b4bc-7e9bad0e227b",
+                            "con_id": "09af7b57-6995-4c88-b4bc-7e9bad0e227b",
                             "widget_type": "table",
                         },
                     ],
@@ -141,7 +141,7 @@ async def suggest_import_mappings(
                     "sample_rows": [["2026-01-01", "식비", 12000]],
                     "widgets": [
                         {
-                            "widget_id": "9c39c8fd-24b1-42a7-af54-7e9372fa0021",
+                            "con_id": "9c39c8fd-24b1-42a7-af54-7e9372fa0021",
                             "widget_type": "savings-goal",
                         },
                     ],
@@ -158,7 +158,7 @@ async def suggest_import_mappings(
     if not payload.widgets:
         raise HTTPException(status_code=400, detail="widgets must be non-empty")
 
-    widget_pairs = [(w.widget_id, w.widget_type) for w in payload.widgets]
+    widget_pairs = [(w.con_id, w.widget_type) for w in payload.widgets]
     grid = build_sheet_matrix(payload.headers, payload.sample_rows)
     sheet_range_overview = get_sheet_range(payload.headers, payload.sample_rows)
 
@@ -181,10 +181,10 @@ async def suggest_import_mappings(
 
     for w in payload.widgets:
         wtype = normalize_widget_type(w.widget_type)
-        address, confidence, reason = resolved[w.widget_id]
+        address, confidence, reason = resolved[w.con_id]
         results.append(
             MappingSuggestion(
-                widget_id=w.widget_id,
+                con_id=w.con_id,
                 widget_type=wtype,
                 sheet=payload.sheet,
                 address=address,
@@ -192,7 +192,7 @@ async def suggest_import_mappings(
         )
         insights.append(
             MappingInsight(
-                widget_id=w.widget_id,
+                con_id=w.con_id,
                 widget_type=wtype,
                 sheet_range=sheet_range_overview,
                 confidence=confidence,
@@ -220,7 +220,7 @@ async def suggest_import_mappings(
         else:
             rows_for_db = [
                 {
-                    "widget_id": str(m.widget_id),
+                    "con_id": str(m.con_id),
                     "widget_type": m.widget_type,
                     "sheet": m.sheet,
                     "address": m.address,
@@ -255,7 +255,7 @@ async def suggest_import_mappings(
             if not canvas_rows:
                 warnings.append("ledger에 위젯이 없어 캔버스 갱신을 건너뜁니다.")
             else:
-                addr_by_wid = {m.widget_id: m.address for m in results}
+                addr_by_con = {m.con_id: m.address for m in results}
                 configs: list[dict[str, Any]] = []
 
                 for row in canvas_rows:
@@ -266,11 +266,11 @@ async def suggest_import_mappings(
                         configs.append(r)
                         continue
 
-                    if cid not in addr_by_wid:
+                    if cid not in addr_by_con:
                         configs.append(r)
                         continue
 
-                    parsed = parse_address_to_cells(grid, addr_by_wid[cid])
+                    parsed = parse_address_to_cells(grid, addr_by_con[cid])
                     if not parsed:
                         configs.append(r)
                         continue
@@ -299,7 +299,7 @@ async def suggest_import_mappings(
 
 
 class AnalyzeMapping(BaseModel):
-    widget_id: UUID
+    con_id: UUID
     widget_type: str
     sheet: str
     address: str
@@ -308,7 +308,7 @@ class AnalyzeMapping(BaseModel):
 
 
 class AnalyzeRecommendation(BaseModel):
-    widget_id: UUID
+    con_id: UUID
     widget_type: str
     sheet: str
     address: str
@@ -336,7 +336,7 @@ class AnalyzeResponse(BaseModel):
 
 
 def _default_recommendation_for_sheet(
-    widget_id: UUID,
+    con_id: UUID,
     widget_type: str,
     sheet: SheetSummary,
 ) -> tuple[str, str, str, float, str]:
@@ -390,7 +390,7 @@ async def analyze_excel_file(
     map_name: str = Form("자동 매핑"),
     widgets: str = Form(
         "[]",
-        description='JSON 문자열: [{"widget_id":"...","widget_type":"savings-goal"}, ...] (비우면 led_id로 조회)',
+        description='JSON 문자열: [{"con_id":"...","widget_type":"savings-goal"}, ...] (비우면 led_id로 조회; 구형 키 widget_id도 허용)',
     ),
     mem_id: str | None = Form(None, description="persist_mapping 시 필요"),
     led_id: str | None = Form(
@@ -438,12 +438,17 @@ async def analyze_excel_file(
 
     if widgets_raw:
         for w in widgets_raw:
+            if not isinstance(w, dict):
+                continue
+            raw_id = w.get("con_id", w.get("widget_id"))
+            if raw_id is None:
+                continue
             try:
-                wid = UUID(str(w["widget_id"]))
-            except (KeyError, ValueError):
+                cid = UUID(str(raw_id))
+            except ValueError:
                 continue
             wtype = normalize_widget_type(str(w.get("widget_type", "")))
-            widget_pairs.append((wid, wtype))
+            widget_pairs.append((cid, wtype))
     elif led_uuid and settings.supabase_configured():
         try:
             canvas_rows_cache = rpc_get_canvas_widgets(led_uuid)
@@ -471,13 +476,13 @@ async def analyze_excel_file(
         workbook_summary=workbook_serialized,
         widgets=widget_pairs,
     )
-    rec_by_id = {UUID(r.widget_id): r for r in llm_recs}
+    rec_by_id = {UUID(r.con_id.strip()): r for r in llm_recs if r.con_id.strip()}
 
     recommendations: list[AnalyzeRecommendation] = []
     mappings_for_db: list[dict[str, Any]] = []
     mappings_for_draft: list[AnalyzeMapping] = []
     bindings_to_apply: list[tuple[UUID, str, str, str, list[Any]]] = []
-    # tuple: (widget_id, widget_type, sheet_name, aggregation, parsed_values)
+    # tuple: (con_id, widget_type, sheet_name, aggregation, parsed_values)
 
     for wid, wtype in widget_pairs:
         rec = rec_by_id.get(wid)
@@ -528,7 +533,7 @@ async def analyze_excel_file(
 
         recommendations.append(
             AnalyzeRecommendation(
-                widget_id=wid,
+                con_id=wid,
                 widget_type=wtype,
                 sheet=chosen_sheet.name,
                 address=address,
@@ -541,7 +546,7 @@ async def analyze_excel_file(
         )
         mappings_for_draft.append(
             AnalyzeMapping(
-                widget_id=wid,
+                con_id=wid,
                 widget_type=wtype,
                 sheet=chosen_sheet.name,
                 address=address,
@@ -551,7 +556,7 @@ async def analyze_excel_file(
         )
         mappings_for_db.append(
             {
-                "widget_id": str(wid),
+                "con_id": str(wid),
                 "widget_type": wtype,
                 "sheet": chosen_sheet.name,
                 "address": address,
@@ -642,7 +647,7 @@ async def analyze_excel_file(
                     )
                     # use the same address we recommended to re-parse against the sheet grid
                     rec_for_wid = next(
-                        (rc for rc in recommendations if rc.widget_id == cid), None
+                        (rc for rc in recommendations if rc.con_id == cid), None
                     )
                     if rec_for_wid is None:
                         configs.append(r)

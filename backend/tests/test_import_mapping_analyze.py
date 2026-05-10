@@ -21,9 +21,9 @@ def _load_canvas_widgets() -> list[dict]:
 
 
 def _widgets_for_analyze_api(canvas: list[dict]) -> str:
-    """프론트 WidgetItem(id, type) → analyze 폼 widgets JSON (widget_id, widget_type)."""
+    """프론트 WidgetItem(id, type) → analyze 폼 widgets JSON (con_id, widget_type)."""
     return json.dumps(
-        [{"widget_id": w["id"], "widget_type": w["type"]} for w in canvas],
+        [{"con_id": w["id"], "widget_type": w["type"]} for w in canvas],
         ensure_ascii=False,
     )
 
@@ -80,7 +80,7 @@ def test_analyze_excel_with_frontend_like_widget_json(client: TestClient) -> Non
     assert "recommendations" in body
     assert len(body["recommendations"]) == len(canvas)
 
-    got_ids = {item["widget_id"] for item in body["recommendations"]}
+    got_ids = {item["con_id"] for item in body["recommendations"]}
     expect_ids = {w["id"] for w in canvas}
     assert got_ids == expect_ids
 
