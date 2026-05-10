@@ -106,9 +106,13 @@ export async function saveImportMapping(
   mapName: string,
   mappings: MappingEntry[],
 ): Promise<string | null> {
+  const rpcRows = mappings.map(m => ({
+    ...m,
+    widget_id: m.con_id,
+  }))
   const rows = await callRpc<{ map_id: string }[]>(
     'save_import_mapping',
-    { p_mem_id: memId, p_map_id: mapId, p_map_name: mapName, p_mappings: mappings as never },
+    { p_mem_id: memId, p_map_id: mapId, p_map_name: mapName, p_mappings: rpcRows as never },
     [],
   )
 
