@@ -67,33 +67,53 @@ class ImportMappingSuggestRequest(BaseModel):
 
 
 class MappingSuggestion(BaseModel):
-    con_id: UUID
-    widget_type: str
-    sheet: str
-    address: str
+    con_id: UUID = Field(description="캔버스 위젯 인스턴스 PK (tb_widget_config.con_id)")
+    widget_type: str = Field(description="정규화된 위젯 타입 (예: savings-goal, table, quote)")
+    sheet: str = Field(description="요청 본문의 시트 이름")
+    address: str = Field(description="엑셀 A1 스타일 주소 (단일 셀 또는 범위, 예: C2:C10)")
 
 
 class MappingInsight(BaseModel):
-    con_id: UUID
-    widget_type: str
-    sheet_range: str
-    confidence: float
-    reason: str
+    con_id: UUID = Field(description="캔버스 위젯 인스턴스 PK")
+    widget_type: str = Field(description="위젯 타입")
+    sheet_range: str = Field(
+        description="요청에 사용한 헤더+샘플 행이 차지하는 전체 범위 요약 (예: A1:E5)"
+    )
+    confidence: float = Field(description="해당 주소 추천의 신뢰도 (0.0~1.0)")
+    reason: str = Field(description="LLM/휴리스틱이 주소를 고른 근거 (한국어)")
 
 
 class TbImportMappingsDraft(BaseModel):
-    map_id: UUID
-    map_name: str
-    mappings: list[MappingSuggestion]
-    regist_dt: str | None = None
+    map_id: UUID = Field(
+        description="이 응답에서 새로 부여한 템플릿 UUID. persist_mapping 시 DB(map_id)와 동일"
+    )
+    map_name: str = Field(description="매핑 프리셋 이름")
+    mappings: list[MappingSuggestion] = Field(description="위젯별 엑셀 시트·범위 매핑 목록")
+    regist_dt: str | None = Field(
+        None,
+        description="DB에 아직 없으면 null. 저장 후에는 get_import_mappings에서 조회 가능",
+    )
 
 
 class ImportMappingSuggestResponse(BaseModel):
-    draft: TbImportMappingsDraft
-    insights: list[MappingInsight]
-    mapping_saved: bool = False
-    canvas_updated: bool = False
-    warnings: list[str] = Field(default_factory=list)
+    draft: TbImportMappingsDraft = Field(
+        description="템플릿 초안 (con_id·시트·주소). persist 시 그대로 저장되는 구조에 대응"
+    )
+    insights: list[MappingInsight] = Field(
+        description="각 위젯에 대한 시트 범위 개요·신뢰도·설명"
+    )
+    mapping_saved: bool = Field(
+        False,
+        description="persist_mapping=true 이고 save_import_mapping이 성공했을 때 true",
+    )
+    canvas_updated: bool = Field(
+        False,
+        description="apply_canvas=true 이고 replace_canvas_widgets가 성공했을 때 true",
+    )
+    warnings: list[str] = Field(
+        default_factory=list,
+        description="mem_id 누락·Supabase 미설정·RPC 실패 등 비치명 메시지",
+    )
 
 
 @router.post(
@@ -299,40 +319,55 @@ async def suggest_import_mappings(
 
 
 class AnalyzeMapping(BaseModel):
-    con_id: UUID
-    widget_type: str
-    sheet: str
-    address: str
-    aggregation: str
-    display_form: str
+    con_id: UUID = Field(description="캔버스 위젯 인스턴스 PK")
+    widget_type: str = Field(description="정규화된 위젯 타입")
+    sheet: str = Field(description="추천이 적용되는 엑셀 시트 이름")
+    address: str = Field(description="엑셀 A1 스타일 범위")
+    aggregation: str = Field(
+        description="집계 방식 (none|sum|avg|…). 테이블·리스트류는 보통 none"
+    )
+    display_form: str = Field(description="데이터 표현 힌트 (single|table|list|text 등)")
 
 
 class AnalyzeRecommendation(BaseModel):
-    con_id: UUID
-    widget_type: str
-    sheet: str
-    address: str
-    aggregation: str
-    display_form: str
-    confidence: float
-    reason: str
-    preview: Any = None
+    con_id: UUID = Field(description="캔버스 위젯 인스턴스 PK")
+    widget_type: str = Field(description="위젯 타입")
+    sheet: str = Field(description="선택된 시트 이름")
+    address: str = Field(description="읽을 셀/범위")
+    aggregation: str = Field(description="적용 권장 집계 방식")
+    display_form: str = Field(description="위젯에 맞는 표현 형태")
+    confidence: float = Field(description="추천 신뢰도 (0~1)")
+    reason: str = Field(description="추천 근거 (한국어)")
+    preview: Any = Field(
+        None,
+        description="파싱된 값의 앞부분 샘플(최대 ~20개). 디버깅·미리보기용 JSON",
+    )
 
 
 class AnalyzeDraft(BaseModel):
-    map_id: UUID
-    map_name: str
-    mappings: list[AnalyzeMapping]
-    regist_dt: str | None = None
+    map_id: UUID = Field(description="이번 분석에서 발급한 템플릿 UUID. persist 시 DB와 동일")
+    map_name: str = Field(description="요청 폼의 map_name")
+    mappings: list[AnalyzeMapping] = Field(description="persist 직전 형태의 위젯별 매핑(집계·표현 포함)")
+    regist_dt: str | None = Field(
+        None,
+        description="미저장 응답에서는 null",
+    )
 
 
 class AnalyzeResponse(BaseModel):
-    file_summary: dict[str, Any]
-    recommendations: list[AnalyzeRecommendation]
-    draft: AnalyzeDraft
-    mapping_saved: bool = False
-    canvas_updated: bool = False
-    warnings: list[str] = Field(default_factory=list)
+    file_summary: dict[str, Any] = Field(
+        description="업로드한 통합문서 요약 JSON (시트명·헤더·샘플·컬럼 프로필 등)"
+    )
+    recommendations: list[AnalyzeRecommendation] = Field(
+        description="각 위젯에 대한 시트·범위·집계·표현 및 미리보기"
+    )
+    draft: AnalyzeDraft = Field(description="save_import_mapping에 넣기 좋은 mappings 초안")
+    mapping_saved: bool = Field(False, description="persist_mapping 성공 여부")
+    canvas_updated: bool = Field(False, description="apply_canvas 성공 여부")
+    warnings: list[str] = Field(
+        default_factory=list,
+        description="헤더 검증 실패·대체 추천·Supabase SKIP 등 안내",
+    )
 
 
 def _default_recommendation_for_sheet(
