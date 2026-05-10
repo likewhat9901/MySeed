@@ -33,6 +33,10 @@ from app.services.widget_binding import (
     build_binding_patch,
     build_binding_with_aggregation,
 )
+from app.openapi.inline_responses import (
+    RESPONSE_POST_IMPORT_MAPPING_ANALYZE,
+    RESPONSE_POST_IMPORT_MAPPING_SUGGEST,
+)
 
 router = APIRouter(tags=["import-mapping"])
 
@@ -122,7 +126,7 @@ class ImportMappingSuggestResponse(BaseModel):
 
 @router.post(
     "/import-mappings/suggest",
-    response_model=ImportMappingSuggestResponse,
+    responses=RESPONSE_POST_IMPORT_MAPPING_SUGGEST,
     summary="엑셀 컬럼 자동 매핑 제안 (LLM + 휴리스틱)",
     description=(
         "헤더/샘플 행/위젯 목록을 받아 OpenAI로 주소를 추천하고, "
@@ -177,7 +181,7 @@ async def suggest_import_mappings(
             },
         },
     ),
-) -> ImportMappingSuggestResponse:
+) -> dict[str, Any]:
     warnings: list[str] = []
     if not payload.widgets:
         raise HTTPException(status_code=400, detail="widgets must be non-empty")
@@ -316,7 +320,7 @@ async def suggest_import_mappings(
         mapping_saved=mapping_saved,
         canvas_updated=canvas_updated,
         warnings=warnings,
-    )
+    ).model_dump(mode="json")
 
 
 # ─── /analyze: 엑셀 파일을 직접 받아 위젯별 추천(시트·범위·집계·표현) ────────────
@@ -424,7 +428,7 @@ def _pick_default_sheet(summary, fallback_name: str | None) -> SheetSummary | No
 
 @router.post(
     "/import-mappings/analyze",
-    response_model=AnalyzeResponse,
+    responses=RESPONSE_POST_IMPORT_MAPPING_ANALYZE,
     summary="엑셀 파일 업로드 → 위젯별 시트·범위·집계 추천 (LLM)",
     description=(
         "Excel(.xlsx) 파일을 multipart로 업로드하면 시트별 컬럼 프로필을 분석한 뒤 "
@@ -445,9 +449,21 @@ async def analyze_excel_file(
         None,
         description="apply_canvas 시 필요. widgets 비어있을 때 캔버스에서 위젯 목록을 자동 조회.",
     ),
-    persist_mapping: bool = Form(False),
-    apply_canvas: bool = Form(False),
-) -> AnalyzeResponse:
+    persist_mapping: bool = Form(
+        False,
+        description=(
+            "true면 엑셀 연결 템플릿을 DB(save_import_mapping)에 저장합니다. "
+            "mem_id 등이 필요합니다."
+        ),
+    ),
+    apply_canvas: bool = Form(
+        False,
+        description=(
+            "true면 가계부 캔버스 위젯 데이터까지 반영합니다(replace_canvas_widgets). "
+            "led_id 등이 필요합니다."
+        ),
+    ),
+) -> dict[str, Any]:
     warnings: list[str] = []
 
     content = await file.read()
@@ -731,4 +747,4 @@ async def analyze_excel_file(
         mapping_saved=mapping_saved,
         canvas_updated=canvas_updated,
         warnings=warnings,
-    )
+    ).model_dump(mode="json")
