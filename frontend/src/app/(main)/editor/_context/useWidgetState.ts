@@ -2,11 +2,11 @@
 
 import { useState, useCallback, useRef, useEffect, useLayoutEffect, type PointerEvent, type RefObject } from 'react'
 import { WidgetItem, WidgetType, ResizeHandle, PendingWidget, WidgetDataBinding } from '@/features/editor/types'
-import { useWidgets } from '../_hooks/useWidgets'
-import { useDragWidget } from '../_hooks/useDragWidget'
-import { useResizeWidget } from '../_hooks/useResizeWidget'
-import { useWidgetHistory } from '../_hooks/useWidgetHistory'
-import { type Viewport } from '../_hooks/useEditorViewport'
+import { useWidgets } from '../canvas/_hooks/useWidgets'
+import { useDragWidget } from '../canvas/_hooks/useDragWidget'
+import { useResizeWidget } from '../canvas/_hooks/useResizeWidget'
+import { useWidgetHistory } from '../canvas/_hooks/useWidgetHistory'
+import { type Viewport } from '../canvas/_hooks/useEditorViewport'
 import { CELL_SIZE } from '../constants'
 
 // ─── useWidgetState ───────────────────────────────────────────────────────────

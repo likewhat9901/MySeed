@@ -69,7 +69,7 @@ export default function LedgerRow({ ledger, index, onRename, onDelete, onCoverCh
             {ledger.led_name}
           </Link>
         )}
-        <p className="text-[11px] text-gray-400 mt-0.5">{formatRelativeTime(ledger.regist_dt)}</p>
+        <p className="text-[11px] text-gray-400 mt-0.5">{formatRelativeTime(ledger.regist_dt, locale)}</p>
       </div>
 
       {/* 컨텍스트 메뉴 */}

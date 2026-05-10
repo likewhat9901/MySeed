@@ -17,6 +17,8 @@
   --color-brand:         #2d8c4e;
   --color-brand-light:   #16a34a;
   --color-brand-darkest: #164d26;
+  --color-seed-bg:       #f4f9f6;
+  --color-seed-muted:    #eaf4ee;
 }
 
 @media (prefers-color-scheme: dark) {  /* 다크 모드 */
@@ -29,5 +31,5 @@
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }

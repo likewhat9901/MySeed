@@ -9,11 +9,19 @@ export const THUMB_COLORS = [
   "from-slate-700 via-slate-500 to-gray-400",
 ];
 
-// ISO 날짜 문자열 → "방금 전 / N분 전 / N시간 전 / N일 전" 변환
-export function formatRelativeTime(isoString?: string): string {
+// ISO 날짜 문자열 → "방금 전 / N분 전 / N시간 전 / N일 전" (또는 영문) 변환
+export function formatRelativeTime(isoString?: string, locale: 'ko' | 'en' = 'ko'): string {
   if (!isoString) return "";
   const diff = Date.now() - new Date(isoString).getTime();
   const mins = Math.floor(diff / 60000);
+  if (locale === 'en') {
+    if (mins < 1)  return "just now";
+    if (mins < 60) return `${mins}m ago`;
+    const hours = Math.floor(mins / 60);
+    if (hours < 24) return `${hours}h ago`;
+    const days = Math.floor(hours / 24);
+    return `${days}d ago`;
+  }
   if (mins < 1)  return "방금 전";
   if (mins < 60) return `${mins}분 전`;
   const hours = Math.floor(mins / 60);

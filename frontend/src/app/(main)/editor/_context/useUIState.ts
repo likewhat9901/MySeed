@@ -16,6 +16,8 @@ export interface UIState {
   handleRightToggle: (tab?: 'widgets' | 'properties') => void
   showGrid: boolean
   onToggleGrid: () => void
+  isEditMode: boolean
+  toggleEditMode: () => void
 }
 
 export function useUIState(): UIState {
@@ -23,6 +25,7 @@ export function useUIState(): UIState {
   const [rightSidebarOpen, setRightSidebarOpen] = useState(false)
   const [rightActiveTab, setRightActiveTab] = useState<'widgets' | 'properties'>('properties')
   const [showGrid, setShowGrid] = useState(true)
+  const [isEditMode, setIsEditMode] = useState(false)
 
   const handleRightToggle = useCallback((tab?: 'widgets' | 'properties') => {
     setRightSidebarOpen(v => !v)
@@ -30,6 +33,7 @@ export function useUIState(): UIState {
   }, [])
 
   const onToggleGrid = useCallback(() => setShowGrid(v => !v), [])
+  const toggleEditMode = useCallback(() => setIsEditMode(v => !v), [])
 
   return {
     sidebarOpen,
@@ -41,5 +45,7 @@ export function useUIState(): UIState {
     handleRightToggle,
     showGrid,
     onToggleGrid,
+    isEditMode,
+    toggleEditMode,
   }
 }

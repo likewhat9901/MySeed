@@ -32,7 +32,7 @@ export default function LedgerCard({ ledger, index, onRename, onDelete, onCoverC
   } = useLedgerItemMenu({ ledger, onRename, onCoverChange })
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl hover:shadow-md transition-shadow">
+    <div className="bg-white border border-seed-muted rounded-2xl hover:shadow-[0_4px_20px_-4px_rgba(45,140,78,0.15)] transition-shadow">
       {/* 썸네일 */}
       <Link href={`/editor?led=${ledger.led_id}`} className="block overflow-hidden rounded-t-2xl relative">
         {ledger.cover_url ? (
@@ -119,7 +119,7 @@ export default function LedgerCard({ ledger, index, onRename, onDelete, onCoverC
           </div>
         </div>
 
-        <p className="text-[10px] text-gray-400 mt-1">{formatRelativeTime(ledger.regist_dt)}</p>
+        <p className="text-[10px] text-gray-400 mt-1">{formatRelativeTime(ledger.regist_dt, locale)}</p>
       </div>
 
       {/* 파일 선택 input — 숨김 */}

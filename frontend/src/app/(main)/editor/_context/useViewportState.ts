@@ -1,7 +1,7 @@
 'use client'
 
 import { useRef, type RefObject, type PointerEvent, type WheelEvent } from 'react'
-import { useEditorViewport, type Viewport } from '../_hooks/useEditorViewport'
+import { useEditorViewport, type Viewport } from '../canvas/_hooks/useEditorViewport'
 
 // ─── useViewportState ─────────────────────────────────────────────────────────
 // 캔버스 ref, 줌·패닝 상태와 핸들러를 관리합니다.

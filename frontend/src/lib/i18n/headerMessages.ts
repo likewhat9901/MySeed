@@ -12,7 +12,7 @@
 
 export const navMessages = {
   en: {
-    navLedger:         "My Ledger",
+    navLedger:         "Ledger",
     navErrorTest:      "Error Test",
     navNotFound:       "Not Found",
     searchPlaceholder: "Search accounts...",
@@ -21,7 +21,7 @@ export const navMessages = {
     signupLink:        "Sign Up",
   },
   ko: {
-    navLedger:         "내 장부",
+    navLedger:         "가계부",
     navErrorTest:      "에러 테스트",
     navNotFound:       "찾을 수 없음",
     searchPlaceholder: "계좌 검색...",

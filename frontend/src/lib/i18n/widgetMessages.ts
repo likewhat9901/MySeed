@@ -33,9 +33,23 @@ export const widgetMessages = {
     retainedSuffix:  ' of your total earnings this cycle.',
 
     // TableWidget
-    tableTitle:   'Table',
-    addRow:       '+ Add row',
-    editColHint:  'Double-click column name to edit',
+    tableTitle:      'Table',
+    addRow:          '+ Add row',
+    editColHint:     'Click column header to manage columns',
+    colAddLeft:      'Add column to left',
+    colAddRight:     'Add column to right',
+    colDelete:       'Delete column',
+    colRename:       'Rename',
+
+    // ReviewListWidget
+    reviewListTitle:  'Spending Review',
+    reviewAddItem:    '+ Add item',
+    reviewGood:       'Good',
+    reviewMeh:        'Meh',
+    reviewBad:        'Bad',
+    reviewTotal:      'Total',
+    reviewPlaceholderLabel:  'Item name',
+    reviewPlaceholderAmount: 'Amount',
 
     // PostItNoteWidget
     postItNote: 'Post-it Note',
@@ -74,9 +88,23 @@ export const widgetMessages = {
     retainedSuffix:  '를 유지했습니다.',
 
     // TableWidget
-    tableTitle:   '테이블',
-    addRow:       '+ 행 추가',
-    editColHint:  '열 이름 더블클릭으로 편집',
+    tableTitle:      '테이블',
+    addRow:          '+ 행 추가',
+    editColHint:     '열 헤더를 클릭해 열을 관리하세요',
+    colAddLeft:      '왼쪽에 열 추가',
+    colAddRight:     '오른쪽에 열 추가',
+    colDelete:       '열 삭제',
+    colRename:       '이름 변경',
+
+    // ReviewListWidget
+    reviewListTitle:  '지출 돌아보기',
+    reviewAddItem:    '+ 항목 추가',
+    reviewGood:       '잘함',
+    reviewMeh:        '애매',
+    reviewBad:        '아쉬움',
+    reviewTotal:      '합계',
+    reviewPlaceholderLabel:  '항목 이름',
+    reviewPlaceholderAmount: '금액',
 
     // PostItNoteWidget
     postItNote: '포스트잇',

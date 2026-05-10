@@ -41,7 +41,7 @@ export default function LoggedOutView() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  async function handleLogin(e: React.FormEvent) {
+  async function handleLogin(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoginError(null);
     const ok = await login(loginEmail, loginPassword);
@@ -63,42 +63,37 @@ export default function LoggedOutView() {
   }
 
   return (
-    <section className="min-h-[calc(100vh-56px)] bg-gray-50 flex items-center py-8 sm:py-12 md:py-16">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 w-full">
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 sm:gap-12 lg:gap-16 items-center">
+    <section className="flex-1 bg-gradient-to-b from-seed-bg via-white to-white flex items-center py-8 sm:py-12 md:py-16">
+      <div className="max-w-5xl mx-auto px-4 sm:px-6 w-full">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 lg:gap-6 items-center">
 
           {/* 왼쪽: 서비스 소개 텍스트 + CTA 버튼 */}
           <div className="space-y-4 sm:space-y-5 md:space-y-6">
-            <span className="inline-flex bg-green-50 border border-green-200 px-3 py-1 rounded-full text-xs whitespace-nowrap">
-              {t.heroTag}
-            </span>
             <h1 className="text-3xl sm:text-4xl md:text-5xl font-extrabold text-gray-900 leading-tight">
-              {t.heroTitle1}<br />
-              {t.heroTitle2}<br />
-              {t.heroTitle3}<span className="text-brand">{t.heroTitleAccent}</span><br />
-              {t.heroTitle4}
+              {t.heroTitle1}<br />{t.heroTitle2}<br />
+              <span className="text-brand">{t.heroTitleAccent}</span>
             </h1>
             <p className="text-gray-500 text-sm sm:text-base">
               {t.heroSub}
             </p>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 sm:gap-4">
-              <button
-                type="button"
+              <a
+                href="/auth/signup"
                 className="cursor-pointer bg-brand-dark text-white px-6 py-3 rounded-lg text-sm sm:text-base whitespace-nowrap"
               >
                 {t.ctaSeeHow}
-              </button>
-              <button
-                type="button"
-                className="cursor-pointer text-gray-700 text-sm sm:text-base"
+              </a>
+              <a
+                href="/auth/signup"
+                className="cursor-pointer border border-brand-dark text-brand-dark px-6 py-3 rounded-lg text-sm sm:text-base whitespace-nowrap hover:bg-seed-muted transition-colors"
               >
-                {t.ctaTemplate}
-              </button>
+                {t.ctaTry}
+              </a>
             </div>
           </div>
 
           {/* 오른쪽: 로그인 폼 카드 */}
-          <div className="bg-white rounded-2xl shadow-xl p-8">
+          <div className="bg-white rounded-2xl shadow-[0_4px_32px_-4px_rgba(45,140,78,0.12)] border border-brand/10 p-8">
             <h2 className="text-xl font-bold">{t.loginWelcome}</h2>
             <p className="text-sm text-gray-500">{t.loginSub}</p>
 
@@ -172,9 +167,9 @@ export default function LoggedOutView() {
             </form>
 
             <div className="flex items-center gap-3 my-5">
-              <div className="flex-1 h-px bg-gray-200" />
+              <div className="flex-1 h-px bg-brand/15" />
               <span className="text-xs text-gray-400">{t.orContinueWith}</span>
-              <div className="flex-1 h-px bg-gray-200" />
+              <div className="flex-1 h-px bg-brand/15" />
             </div>
 
             <div className="grid grid-cols-2 gap-3">

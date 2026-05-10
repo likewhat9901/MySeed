@@ -1,16 +1,20 @@
 'use client'
 
 // ─── (home)/_views/LoggedInView.tsx ───────────────────────────────────────────
-// 로그인 상태 홈 화면.
+// 로그인 상태 홈 화면 — 탭 전환 (내 캔버스 / 저장된 템플릿) + 풀 레이아웃
 
-import { LayoutGrid, List, Plus, Sparkles, Table2, Database, PieChart } from 'lucide-react'
-import { useState, type RefObject } from 'react'
+import { LayoutGrid, List, Plus } from 'lucide-react'
+import { useState, useEffect, type RefObject } from 'react'
 import LedgerCard from '../_components/LedgerCard'
 import LedgerRow from '../_components/LedgerRow'
 import LedgerSkeleton from '../_components/LedgerSkeleton'
+import MappingTemplateCard from '../_components/MappingTemplateCard'
+import MappingTemplateRow from '../_components/MappingTemplateRow'
 import { useLedgerActions } from '../_hooks/useLedgerActions'
 import { useLocale } from '@/lib/i18n/LocaleContext'
 import { homeMessages } from '@/lib/i18n/homeMessages'
+import { useAuth } from '@/features/auth/AuthContext'
+import { getImportMappings, deleteImportMapping, type ImportMapping } from '@/features/import/api'
 
 interface NewLedgerInputProps {
   mode: 'grid' | 'list'
@@ -62,29 +66,35 @@ function NewLedgerInput({ mode, inputRef, value, onChange, onConfirm, onCancel }
   )
 }
 
+type Tab = 'ledgers' | 'mappings'
+
 export default function LoggedInView() {
+  const [activeTab, setActiveTab] = useState<Tab>('ledgers')
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid')
   const { locale } = useLocale()
   const t = homeMessages[locale]
+  const { user } = useAuth()
   const {
-    ledgers,
-    loading,
-    creating,
-    newName, setNewName,
-    newNameInputRef,
-    startCreating,
-    cancelCreating,
-    handleCreate,
-    handleRename,
-    handleDelete,
-    handleCoverChange,
+    ledgers, loading, creating,
+    newName, setNewName, newNameInputRef,
+    startCreating, cancelCreating,
+    handleCreate, handleRename, handleDelete, handleCoverChange,
   } = useLedgerActions()
 
-  const BLUEPRINTS = [
-    { icon: Table2,   title: t.blueprintExcel,     sub: t.blueprintExcelSub },
-    { icon: Database, title: t.blueprintNotion,    sub: t.blueprintNotionSub },
-    { icon: PieChart, title: t.blueprintPortfolio, sub: t.blueprintPortfolioSub },
-  ]
+  const [mappings, setMappings] = useState<ImportMapping[]>([])
+  const [loadingMappings, setLoadingMappings] = useState(true)
+
+  useEffect(() => {
+    if (!user?.id) return
+    getImportMappings(user.id)
+      .then(setMappings)
+      .finally(() => setLoadingMappings(false))
+  }, [user?.id])
+
+  async function handleDeleteMapping(mapId: string) {
+    await deleteImportMapping(mapId)
+    setMappings(prev => prev.filter(m => m.map_id !== mapId))
+  }
 
   const inputProps: Omit<NewLedgerInputProps, 'mode'> = {
     inputRef: newNameInputRef,
@@ -95,40 +105,65 @@ export default function LoggedInView() {
   }
 
   return (
-    <section className="min-h-[calc(100vh-56px)] bg-gray-50 py-10 sm:py-14">
+    <section className="flex-1 bg-gradient-to-b from-seed-bg via-white to-white py-10 sm:py-14">
       <div className="max-w-5xl mx-auto px-4 sm:px-6">
 
         {/* 타이틀 */}
         <div className="mb-8">
-          <h1 className="text-3xl sm:text-4xl font-bold text-gray-900">{t.gardenTitle}</h1>
-          <p className="mt-2 text-sm text-gray-500">{t.gardenSub}</p>
+          <h1 className="text-3xl sm:text-4xl font-bold text-brand-darker">{t.gardenTitle}</h1>
+          {t.gardenSub && <p className="mt-2 text-sm text-gray-500">{t.gardenSub}</p>}
         </div>
 
-        {/* 장부 목록 */}
-        <div className="mb-10">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-gray-700">{t.savedLedgers}</h2>
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onClick={() => setViewMode('grid')}
-                className={`cursor-pointer p-1.5 rounded ${viewMode === 'grid' ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
-                aria-label="그리드 뷰"
-              >
-                <LayoutGrid className="size-4" />
-              </button>
-              <button
-                type="button"
-                onClick={() => setViewMode('list')}
-                className={`cursor-pointer p-1.5 rounded ${viewMode === 'list' ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
-                aria-label="리스트 뷰"
-              >
-                <List className="size-4" />
-              </button>
-            </div>
+        {/* 탭 + 뷰 토글 */}
+        <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center gap-1 bg-gray-100 rounded-xl p-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab('ledgers')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'ledgers'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {t.tabMyCanvas}
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('mappings')}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-all ${
+                activeTab === 'mappings'
+                  ? 'bg-white text-gray-900 shadow-sm'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              {t.tabSavedMappings}
+            </button>
           </div>
 
-          {viewMode === 'grid' ? (
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              className={`cursor-pointer p-1.5 rounded ${viewMode === 'grid' ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+              aria-label="그리드 뷰"
+            >
+              <LayoutGrid className="size-4" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              className={`cursor-pointer p-1.5 rounded ${viewMode === 'list' ? 'text-gray-900' : 'text-gray-400 hover:text-gray-600'}`}
+              aria-label="리스트 뷰"
+            >
+              <List className="size-4" />
+            </button>
+          </div>
+        </div>
+
+        {/* 탭 콘텐츠 — 내 캔버스 */}
+        {activeTab === 'ledgers' && (
+          viewMode === 'grid' ? (
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
               {creating ? (
                 <NewLedgerInput mode="grid" {...inputProps} />
@@ -136,91 +171,83 @@ export default function LoggedInView() {
                 <button
                   type="button"
                   onClick={startCreating}
-                  className="flex flex-col items-center justify-center gap-3 bg-white border border-gray-200 rounded-2xl p-6 min-h-[160px] hover:shadow-md transition-shadow cursor-pointer group"
+                  className="flex flex-col items-center justify-center gap-3 bg-white border border-seed-muted rounded-2xl p-6 min-h-[160px] hover:shadow-md hover:border-brand/30 transition-all cursor-pointer group"
                 >
-                  <div className="w-12 h-12 rounded-full border-2 border-gray-300 flex items-center justify-center group-hover:border-brand group-hover:text-brand text-gray-400 transition-colors">
+                  <div className="w-12 h-12 rounded-full border-2 border-brand/20 flex items-center justify-center group-hover:border-brand group-hover:text-brand text-brand/30 transition-colors">
                     <Plus className="size-5" />
                   </div>
                   <div className="text-center">
                     <p className="text-sm font-semibold text-gray-800">{t.startNewLedger}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{t.newLedgerSub}</p>
+                    {t.newLedgerSub && <p className="text-xs text-gray-400 mt-0.5">{t.newLedgerSub}</p>}
                   </div>
                 </button>
               )}
-
               {loading
-                ? Array.from({ length: 3 }).map((_, i) => <LedgerSkeleton key={i} mode="grid" />)
+                ? Array.from({ length: 5 }).map((_, i) => <LedgerSkeleton key={i} mode="grid" />)
                 : ledgers.map((ledger, i) => (
-                    <LedgerCard
-                      key={ledger.led_id}
-                      ledger={ledger}
-                      index={i}
-                      onRename={handleRename}
-                      onDelete={handleDelete}
-                      onCoverChange={handleCoverChange}
-                    />
+                    <LedgerCard key={ledger.led_id} ledger={ledger} index={i}
+                      onRename={handleRename} onDelete={handleDelete} onCoverChange={handleCoverChange} />
                   ))
               }
             </div>
           ) : (
-            <div className="flex flex-col gap-2">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
               {creating ? (
                 <NewLedgerInput mode="list" {...inputProps} />
               ) : (
                 <button
                   type="button"
                   onClick={startCreating}
-                  className="flex items-center gap-4 bg-white border border-gray-200 rounded-xl px-4 py-3 hover:shadow-sm transition-shadow cursor-pointer group"
+                  className="flex items-center gap-4 bg-white border border-seed-muted rounded-xl px-4 py-3 hover:shadow-sm hover:border-brand/30 transition-all cursor-pointer group"
                 >
-                  <div className="w-10 h-10 shrink-0 rounded-lg border-2 border-gray-300 flex items-center justify-center group-hover:border-brand group-hover:text-brand text-gray-400 transition-colors">
+                  <div className="w-10 h-10 shrink-0 rounded-lg border-2 border-brand/20 flex items-center justify-center group-hover:border-brand group-hover:text-brand text-brand/30 transition-colors">
                     <Plus className="size-4" />
                   </div>
                   <div className="text-left">
                     <p className="text-sm font-semibold text-gray-800">{t.startNewLedger}</p>
-                    <p className="text-[11px] text-gray-400 mt-0.5">{t.newLedgerSub}</p>
+                    {t.newLedgerSub && <p className="text-[11px] text-gray-400 mt-0.5">{t.newLedgerSub}</p>}
                   </div>
                 </button>
               )}
-
               {loading
                 ? Array.from({ length: 3 }).map((_, i) => <LedgerSkeleton key={i} mode="list" />)
                 : ledgers.map((ledger, i) => (
-                    <LedgerRow
-                      key={ledger.led_id}
-                      ledger={ledger}
-                      index={i}
-                      onRename={handleRename}
-                      onDelete={handleDelete}
-                      onCoverChange={handleCoverChange}
-                    />
+                    <LedgerRow key={ledger.led_id} ledger={ledger} index={i}
+                      onRename={handleRename} onDelete={handleDelete} onCoverChange={handleCoverChange} />
                   ))
               }
             </div>
-          )}
-        </div>
+          )
+        )}
 
-        {/* 블루프린트 */}
-        <div>
-          <h2 className="flex items-center gap-1.5 text-sm font-semibold text-gray-700 mb-3">
-            <Sparkles className="size-4 text-brand" />
-            {t.startFromBlueprint}
-          </h2>
-          <div className="flex flex-wrap gap-3">
-            {BLUEPRINTS.map(({ icon: Icon, title, sub }) => (
-              <button
-                key={title}
-                type="button"
-                className="cursor-pointer flex items-center gap-3 border border-gray-200 bg-white rounded-xl px-4 py-3 hover:shadow-sm hover:border-gray-300 transition-all"
-              >
-                <Icon className="size-5 text-gray-500 shrink-0" />
-                <div className="text-left">
-                  <p className="text-sm font-semibold text-gray-800">{title}</p>
-                  <p className="text-[10px] text-gray-400">{sub}</p>
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
+        {/* 탭 콘텐츠 — 저장된 템플릿 */}
+        {activeTab === 'mappings' && (
+          loadingMappings ? (
+            viewMode === 'grid' ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 5 }).map((_, i) => <LedgerSkeleton key={i} mode="grid" />)}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {Array.from({ length: 3 }).map((_, i) => <LedgerSkeleton key={i} mode="list" />)}
+              </div>
+            )
+          ) : mappings.length === 0 ? (
+            <p className="text-sm text-gray-400 py-4">{t.noMappings}</p>
+          ) : viewMode === 'grid' ? (
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
+              {mappings.map((m, i) => (
+                <MappingTemplateCard key={m.map_id} mapping={m} index={i} onDelete={handleDeleteMapping} />
+              ))}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              {mappings.map((m, i) => (
+                <MappingTemplateRow key={m.map_id} mapping={m} index={i} onDelete={handleDeleteMapping} />
+              ))}
+            </div>
+          )
+        )}
 
       </div>
     </section>

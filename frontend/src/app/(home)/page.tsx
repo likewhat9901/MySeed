@@ -9,11 +9,11 @@ import LoggedOutView from "./_views/LoggedOutView";
 export default function Home() {
   const { loggedIn } = useAuth();
   return (
-    <>
-      <main>
+    <div className="flex flex-col flex-1">
+      <main className="flex-1 flex flex-col">
         {loggedIn ? <LoggedInView /> : <LoggedOutView />}
       </main>
       <Footer />
-    </>
+    </div>
   );
 }

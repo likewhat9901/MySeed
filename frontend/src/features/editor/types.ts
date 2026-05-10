@@ -6,14 +6,9 @@
 // registry.ts에 등록된 위젯 타입과 1:1 매핑.
 // 새 위젯 추가 시 registry.ts와 함께 여기도 업데이트.
 export type WidgetType =
-  | 'savings-goal'
-  | 'monthly-expenses'
   | 'post-it'
-  | 'quote'
-  | 'flow-analysis'
-  | 'portfolio-health'
   | 'table'
-  | 'check-list'
+  | 'review-list'
 
 export type ResizeHandle = 'n' | 's' | 'e' | 'w' | 'ne' | 'nw' | 'se' | 'sw'
 
@@ -44,34 +39,28 @@ export interface PostItBinding {
   lines: string[]
 }
 
-export interface QuoteBinding {
-  text: string
-  author: string
-}
-
-export interface SavingsGoalBinding {
-  label: string
-  current: number
-  target: number
-}
-
 export interface TableBinding {
   columns: string[]
   rows: string[][]
 }
 
-export interface CheckListBinding {
-  title: string
-  items: { text: string; checked: boolean }[]
+export type ReviewRating = 'good' | 'meh' | 'bad' | null
+
+export interface ReviewItem {
+  id: string
+  label: string
+  amount: number
+  rating: ReviewRating
 }
 
-// DB 집계형 위젯은 data_binding 없음 — null
+export interface ReviewListBinding {
+  items: ReviewItem[]
+}
+
 export type WidgetDataBinding =
   | PostItBinding
-  | QuoteBinding
-  | SavingsGoalBinding
   | TableBinding
-  | CheckListBinding
+  | ReviewListBinding
   | null
 
 export interface WidgetItem {
