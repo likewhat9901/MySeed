@@ -67,52 +67,56 @@ class ImportMappingSuggestRequest(BaseModel):
 
 
 class MappingSuggestion(BaseModel):
-    con_id: UUID = Field(description="캔버스 위젯 인스턴스 PK (tb_widget_config.con_id)")
-    widget_type: str = Field(description="정규화된 위젯 타입 (예: savings-goal, table, quote)")
-    sheet: str = Field(description="요청 본문의 시트 이름")
-    address: str = Field(description="엑셀 A1 스타일 주소 (단일 셀 또는 범위, 예: C2:C10)")
+    con_id: UUID = Field(description="가계부 화면에서 위젯 한 개를 구분하는 고유 번호")
+    widget_type: str = Field(description="위젯 종류(저축 목표·표 등 내부에서 쓰는 타입 이름)")
+    sheet: str = Field(description="엑셀에서 데이터를 읽을 시트 이름")
+    address: str = Field(
+        description="엑셀에서 읽을 위치(예: 한 칸 C2 또는 영역 C2:C10처럼 적는 주소)"
+    )
 
 
 class MappingInsight(BaseModel):
-    con_id: UUID = Field(description="캔버스 위젯 인스턴스 PK")
-    widget_type: str = Field(description="위젯 타입")
+    con_id: UUID = Field(description="가계부 화면에서 위젯 한 개를 구분하는 고유 번호")
+    widget_type: str = Field(description="위젯 종류 이름")
     sheet_range: str = Field(
-        description="요청에 사용한 헤더+샘플 행이 차지하는 전체 범위 요약 (예: A1:E5)"
+        description="요청에 넣은 표 샘플 전체가 차지하는 영역을 한 줄로 요약한 문자열"
     )
-    confidence: float = Field(description="해당 주소 추천의 신뢰도 (0.0~1.0)")
-    reason: str = Field(description="LLM/휴리스틱이 주소를 고른 근거 (한국어)")
+    confidence: float = Field(description="위 주소 추천을 얼마나 믿어도 되는지에 대한 점수(0~1)")
+    reason: str = Field(description="왜 그 열·범위를 골랐는지에 대한 짧은 한국어 설명")
 
 
 class TbImportMappingsDraft(BaseModel):
     map_id: UUID = Field(
-        description="이 응답에서 새로 부여한 템플릿 UUID. persist_mapping 시 DB(map_id)와 동일"
+        description="이번에 만든 엑셀 연결 템플릿의 번호(저장 요청 시 같은 값이 DB에 들어감)"
     )
-    map_name: str = Field(description="매핑 프리셋 이름")
-    mappings: list[MappingSuggestion] = Field(description="위젯별 엑셀 시트·범위 매핑 목록")
+    map_name: str = Field(description="사람이 부른 이 연결 설정의 이름")
+    mappings: list[MappingSuggestion] = Field(
+        description="위젯마다 어느 시트·어느 칸을 볼지 나열한 목록"
+    )
     regist_dt: str | None = Field(
         None,
-        description="DB에 아직 없으면 null. 저장 후에는 get_import_mappings에서 조회 가능",
+        description="처음 응답일 때는 비어 있음. DB에 저장된 뒤에는 저장 시각 문자열이 생김",
     )
 
 
 class ImportMappingSuggestResponse(BaseModel):
     draft: TbImportMappingsDraft = Field(
-        description="템플릿 초안 (con_id·시트·주소). persist 시 그대로 저장되는 구조에 대응"
+        description="엑셀과 위젯 연결 설정의 초안 전체(번호·이름·연결 목록)"
     )
     insights: list[MappingInsight] = Field(
-        description="각 위젯에 대한 시트 범위 개요·신뢰도·설명"
+        description="위젯마다 추천 이유와 점수 같은 부가 설명 목록"
     )
     mapping_saved: bool = Field(
         False,
-        description="persist_mapping=true 이고 save_import_mapping이 성공했을 때 true",
+        description="연결 템플릿을 저장하라고 요청했고, 실제로 DB에 저장까지 됐는지 여부",
     )
     canvas_updated: bool = Field(
         False,
-        description="apply_canvas=true 이고 replace_canvas_widgets가 성공했을 때 true",
+        description="가계부 화면의 위젯 내용까지 갱신하라고 했고, 그게 성공했는지 여부",
     )
     warnings: list[str] = Field(
         default_factory=list,
-        description="mem_id 누락·Supabase 미설정·RPC 실패 등 비치명 메시지",
+        description="일부만 처리했거나 건너뛴 경우 그 이유를 적은 문장들",
     )
 
 
@@ -319,54 +323,63 @@ async def suggest_import_mappings(
 
 
 class AnalyzeMapping(BaseModel):
-    con_id: UUID = Field(description="캔버스 위젯 인스턴스 PK")
-    widget_type: str = Field(description="정규화된 위젯 타입")
-    sheet: str = Field(description="추천이 적용되는 엑셀 시트 이름")
-    address: str = Field(description="엑셀 A1 스타일 범위")
+    con_id: UUID = Field(description="가계부 화면에서 위젯 한 개를 구분하는 고유 번호")
+    widget_type: str = Field(description="위젯 종류 이름")
+    sheet: str = Field(description="엑셀에서 쓸 시트 이름")
+    address: str = Field(description="엑셀에서 읽을 칸 또는 칸들의 범위")
     aggregation: str = Field(
-        description="집계 방식 (none|sum|avg|…). 테이블·리스트류는 보통 none"
+        description="숫자 여러 칸을 하나로 합칠 때 방법(합·평균·안 함 등). 표나 목록형은 보통 합치지 않음"
     )
-    display_form: str = Field(description="데이터 표현 힌트 (single|table|list|text 등)")
+    display_form: str = Field(description="위젯에 값을 어떤 모양으로 넣을지에 대한 힌트")
 
 
 class AnalyzeRecommendation(BaseModel):
-    con_id: UUID = Field(description="캔버스 위젯 인스턴스 PK")
-    widget_type: str = Field(description="위젯 타입")
-    sheet: str = Field(description="선택된 시트 이름")
-    address: str = Field(description="읽을 셀/범위")
-    aggregation: str = Field(description="적용 권장 집계 방식")
-    display_form: str = Field(description="위젯에 맞는 표현 형태")
-    confidence: float = Field(description="추천 신뢰도 (0~1)")
-    reason: str = Field(description="추천 근거 (한국어)")
+    con_id: UUID = Field(description="가계부 화면에서 위젯 한 개를 구분하는 고유 번호")
+    widget_type: str = Field(description="위젯 종류 이름")
+    sheet: str = Field(description="값을 가져오기로 한 시트 이름")
+    address: str = Field(description="값을 가져올 엑셀 칸(또는 영역)")
+    aggregation: str = Field(description="값을 어떻게 한 덩어리로 만들지에 대한 권장 방법")
+    display_form: str = Field(description="위젯에 넣을 때 권장되는 표시 형태")
+    confidence: float = Field(description="이 추천이 맞을 가능성에 대한 점수(0~1)")
+    reason: str = Field(description="왜 이 시트·범위·합치기 방식을 추천했는지 설명")
     preview: Any = Field(
         None,
-        description="파싱된 값의 앞부분 샘플(최대 ~20개). 디버깅·미리보기용 JSON",
+        description="엑셀에서 읽어 온 값 일부를 미리 보여 주는 내용(점검용, 앞쪽 몇 개만)",
     )
 
 
 class AnalyzeDraft(BaseModel):
-    map_id: UUID = Field(description="이번 분석에서 발급한 템플릿 UUID. persist 시 DB와 동일")
-    map_name: str = Field(description="요청 폼의 map_name")
-    mappings: list[AnalyzeMapping] = Field(description="persist 직전 형태의 위젯별 매핑(집계·표현 포함)")
+    map_id: UUID = Field(
+        description="이번에 만든 엑셀 연결 템플릿 번호(저장하면 DB에도 같은 번호로 들어감)"
+    )
+    map_name: str = Field(description="사용자가 붙인 이 연결 설정의 이름")
+    mappings: list[AnalyzeMapping] = Field(
+        description="위젯마다 어느 시트·범위·어떻게 합칠지까지 담은 목록(저장용 형태)"
+    )
     regist_dt: str | None = Field(
         None,
-        description="미저장 응답에서는 null",
+        description="아직 저장 전이면 비어 있음. 저장 후에는 기록 시각이 붙을 수 있음",
     )
 
 
 class AnalyzeResponse(BaseModel):
     file_summary: dict[str, Any] = Field(
-        description="업로드한 통합문서 요약 JSON (시트명·헤더·샘플·컬럼 프로필 등)"
+        description="올린 파일 안에 시트마다 어떤 열·어떤 성격의 값이 있는지 요약한 표현"
     )
     recommendations: list[AnalyzeRecommendation] = Field(
-        description="각 위젯에 대한 시트·범위·집계·표현 및 미리보기"
+        description="각 위젯에 대해 어디를 읽고 어떻게 보여줄지 제안한 결과 목록"
     )
-    draft: AnalyzeDraft = Field(description="save_import_mapping에 넣기 좋은 mappings 초안")
-    mapping_saved: bool = Field(False, description="persist_mapping 성공 여부")
-    canvas_updated: bool = Field(False, description="apply_canvas 성공 여부")
+    draft: AnalyzeDraft = Field(
+        description="연결 설정을 DB에 넣을 때 쓰기 좋게 정리한 초안(이름·번호·연결 목록)"
+    )
+    mapping_saved: bool = Field(False, description="연결 템플릿 저장을 요청했을 때 실제 저장 성공 여부")
+    canvas_updated: bool = Field(
+        False,
+        description="가계부 화면 위젯 내용까지 바꾸라고 했을 때 그게 끝까지 됐는지 여부",
+    )
     warnings: list[str] = Field(
         default_factory=list,
-        description="헤더 검증 실패·대체 추천·Supabase SKIP 등 안내",
+        description="중간에 규칙을 바꿨거나 일부를 못 했을 때 그 사유를 적은 문장들",
     )
 
 
