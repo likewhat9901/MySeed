@@ -47,7 +47,7 @@ export const WIDGET_REGISTRY: WidgetMeta[] = [
   {
     type:      'review-list',
     label:     'Spending Review',
-    labelKo:   '지출 돌아보기',
+    labelKo:   '지출 리뷰',
     defaultW:  8,
     defaultH:  8,
     minW:      5,

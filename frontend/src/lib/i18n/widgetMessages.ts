@@ -97,7 +97,7 @@ export const widgetMessages = {
     colRename:       '이름 변경',
 
     // ReviewListWidget
-    reviewListTitle:  '지출 돌아보기',
+    reviewListTitle:  '지출 리뷰',
     reviewAddItem:    '+ 항목 추가',
     reviewGood:       '잘함',
     reviewMeh:        '애매',

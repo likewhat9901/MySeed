@@ -120,7 +120,7 @@ export default function ReviewListWidget({ binding, onBindingChange, onBeforeCha
             </button>
 
             {/* 삭제 버튼 */}
-            <td className="border-0 bg-white shrink-0">
+            <div className="shrink-0">
               {isEditMode && (
                 <button
                   onClick={() => deleteItem(item.id)}
@@ -129,7 +129,7 @@ export default function ReviewListWidget({ binding, onBindingChange, onBeforeCha
                   <Trash2 size={11} />
                 </button>
               )}
-            </td>
+            </div>
           </div>
         ))}
 
