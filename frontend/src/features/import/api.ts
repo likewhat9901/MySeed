@@ -94,3 +94,42 @@ export async function saveImportMapping(
 export async function deleteImportMapping(mapId: string): Promise<boolean> {
   return callRpcVoid('delete_import_mapping', { p_map_id: mapId })
 }
+
+// ── AI 자동 매핑 분석 ─────────────────────────────────────────────────────────
+
+export interface AnalyzeRecommendation {
+  con_id:       string
+  widget_type:  string
+  sheet:        string
+  address:      string
+  aggregation:  string
+  display_form: string
+  confidence:   number
+  reason:       string
+  preview:      string
+}
+
+export interface AnalyzeResult {
+  recommendations: AnalyzeRecommendation[]
+}
+
+const ANALYZE_API = 'https://backend-production-c550.up.railway.app/api/import-mappings/analyze'
+
+export async function analyzeImportMapping(
+  file: File,
+  widgets: { con_id: string; widget_type: string }[],
+): Promise<AnalyzeResult | null> {
+  const form = new FormData()
+  form.append('file', file)
+  form.append('widgets', JSON.stringify(widgets))
+  form.append('persist_mapping', 'false')
+  form.append('apply_canvas', 'false')
+  form.append('map_name', '')
+
+  const res = await fetch(ANALYZE_API, { method: 'POST', body: form })
+  if (!res.ok) {
+    console.error('[import/analyzeImportMapping] API 오류:', res.status, await res.text())
+    return null
+  }
+  return res.json()
+}

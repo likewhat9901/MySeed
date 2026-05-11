@@ -17,6 +17,7 @@ import {
   getImportMappings,
   saveImportMapping,
   deleteImportMapping,
+  analyzeImportMapping,
   type MappingEntry,
   type ImportMapping,
 } from '@/features/import/api'
@@ -31,7 +32,9 @@ export default function ImportMapper() {
   const [workbook,    setWorkbook]    = useState<WorkBook | null>(null)
   const [activeSheet, setActiveSheet] = useState<string>('')
   const [uploading,   setUploading]   = useState(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [autoMapping, setAutoMapping] = useState(false)
+  const fileInputRef  = useRef<HTMLInputElement>(null)
+  const uploadedFile  = useRef<File | null>(null)
 
   // ── 매핑 상태 ────────────────────────────────────────────────────────────────
   const [mappings,       setMappings]       = useState<MappingEntry[]>([])
@@ -65,6 +68,7 @@ export default function ImportMapper() {
   // ── 파일 업로드 ──────────────────────────────────────────────────────────────
   const handleFile = useCallback(async (file: File) => {
     setUploading(true)
+    uploadedFile.current = file
     const buf = await file.arrayBuffer()
     const wb  = XLSX.read(buf, { type: 'array' })
     setWorkbook(wb)
@@ -72,6 +76,25 @@ export default function ImportMapper() {
     setUploading(false)
     if (user?.id) uploadExcelFile(user.id, file)
   }, [user?.id])
+
+  const handleAutoMap = useCallback(async () => {
+    if (!uploadedFile.current || autoMapping) return
+    setAutoMapping(true)
+    const widgetList = widgets.map(w => ({ con_id: w.id, widget_type: w.type }))
+    const result = await analyzeImportMapping(uploadedFile.current, widgetList)
+    if (result) {
+      const newMappings: MappingEntry[] = result.recommendations.map(r => ({
+        widget_id:   r.con_id,
+        widget_type: r.widget_type as MappingEntry['widget_type'],
+        sheet:       r.sheet,
+        address:     r.address,
+      }))
+      setMappings(newMappings)
+      setIsDirty(true)
+      newMappings.forEach(applyMapping)
+    }
+    setAutoMapping(false)
+  }, [autoMapping, widgets, workbook, updateWidgetData])
 
   function onFileChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]
@@ -237,14 +260,14 @@ export default function ImportMapper() {
         showPresets={showPresets}
         mappings={mappings}
         hasExcel={!!workbook}
-        autoMapping={false}
+        autoMapping={autoMapping}
         onTogglePresets={() => setShowPresets(v => !v)}
         onLoadPreset={handleLoadPreset}
         onDeletePreset={handleDeletePreset}
         onSave={handleUpdatePreset}
         onSaveNew={handleSaveNewPreset}
         onOverwrite={handleOverwritePreset}
-        onAutoMap={() => {/* TODO: AI 자동 매핑 API 연결 */}}
+        onAutoMap={handleAutoMap}
       />
 
       {/* 본문: 좌우 분할 */}
