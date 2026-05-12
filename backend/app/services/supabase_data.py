@@ -87,6 +87,21 @@ def rpc_get_canvas_widgets(led_id: UUID) -> list[dict[str, Any]]:
     return list(res.data or [])
 
 
+def ledger_belongs_to_member(led_id: UUID, mem_id: UUID) -> bool:
+    """tb_ledger 에서 led_id 가 mem_id 소유인지 (service role 로 조회)."""
+    res = (
+        _client()
+        .table("tb_ledger")
+        .select("led_id")
+        .eq("led_id", str(led_id))
+        .eq("mem_id", str(mem_id))
+        .limit(1)
+        .execute()
+    )
+    data = res.data
+    return bool(data)
+
+
 def insert_tb_records(rows: list[dict[str, Any]], *, chunk_size: int = 250) -> list[str]:
     """
     `tb_record` bulk insert (service role). Large payloads are chunked.

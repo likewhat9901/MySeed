@@ -1,5 +1,9 @@
 /supabase/
 
+# Secrets (backend loads backend/.env locally)
+.env
+.env.local
+.env.example
 # Python
 __pycache__/
 *.py[cod]

@@ -2,10 +2,11 @@ import json as _json
 from typing import Any
 from uuid import UUID, uuid4
 
-from fastapi import APIRouter, Body, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Body, File, Form, Header, HTTPException, UploadFile
 from pydantic import AliasChoices, BaseModel, Field
 
 from app.core.config import get_settings
+from app.deps.supabase_user import require_supabase_user_id
 from app.services.aggregation import normalize_aggregation
 from app.services.excel_analyzer import (
     SheetSummary,
@@ -25,6 +26,7 @@ from app.services.llm_import_mapping import (
 )
 from app.services.llm_widget_recommendation import recommend_widget_mappings
 from app.services.supabase_data import (
+    ledger_belongs_to_member,
     rpc_get_canvas_widgets,
     rpc_replace_canvas_widgets,
     rpc_save_import_mapping,
@@ -181,6 +183,13 @@ async def suggest_import_mappings(
             },
         },
     ),
+    authorization: str | None = Header(
+        None,
+        description=(
+            "`persist_mapping` 또는 `apply_canvas` 가 참이며 Supabase 가 켜진 경우 필수 — "
+            "`Authorization: Bearer <로그인 access_token>`"
+        ),
+    ),
 ) -> dict[str, Any]:
     warnings: list[str] = []
     if not payload.widgets:
@@ -240,12 +249,22 @@ async def suggest_import_mappings(
     mapping_saved = False
     canvas_updated = False
 
+    actor_uid: UUID | None = None
+    if settings.supabase_configured() and (
+        payload.persist_mapping or payload.apply_canvas
+    ):
+        actor_uid = require_supabase_user_id(authorization)
+
     if payload.persist_mapping:
-        if not payload.mem_id:
-            warnings.append("persist_mapping이 True인데 mem_id가 없어 저장을 건너뜁니다.")
-        elif not settings.supabase_configured():
+        if not settings.supabase_configured():
             warnings.append("Supabase 환경변수가 없어 save_import_mapping을 호출하지 않습니다.")
         else:
+            assert actor_uid is not None
+            if payload.mem_id is not None and payload.mem_id != actor_uid:
+                raise HTTPException(
+                    status_code=403,
+                    detail="mem_id가 로그인한 사용자와 일치하지 않습니다",
+                )
             rows_for_db = [
                 {
                     "con_id": str(m.con_id),
@@ -257,7 +276,7 @@ async def suggest_import_mappings(
             ]
             try:
                 saved_id = rpc_save_import_mapping(
-                    mem_id=payload.mem_id,
+                    mem_id=actor_uid,
                     map_id=map_id,
                     map_name=payload.map_name,
                     mappings=rows_for_db,
@@ -274,6 +293,12 @@ async def suggest_import_mappings(
         elif not settings.supabase_configured():
             warnings.append("Supabase 환경변수가 없어 replace_canvas_widgets를 호출하지 않습니다.")
         else:
+            assert actor_uid is not None
+            if not ledger_belongs_to_member(payload.led_id, actor_uid):
+                raise HTTPException(
+                    status_code=403,
+                    detail="이 가계부(ledger)에 대한 권한이 없습니다",
+                )
             try:
                 canvas_rows = rpc_get_canvas_widgets(payload.led_id)
             except Exception as e:
@@ -463,6 +488,13 @@ async def analyze_excel_file(
             "led_id 등이 필요합니다."
         ),
     ),
+    authorization: str | None = Header(
+        None,
+        description=(
+            "`persist_mapping` / `apply_canvas` 가 참이거나, widgets 없이 "
+            "`led_id` 로 캔버스 목록을 읽을 때 필수 (`Bearer` access_token)"
+        ),
+    ),
 ) -> dict[str, Any]:
     warnings: list[str] = []
 
@@ -497,6 +529,14 @@ async def analyze_excel_file(
             raise HTTPException(status_code=400, detail=f"mem_id 형식 오류: {e!s}") from e
 
     settings = get_settings()
+    actor_uid: UUID | None = None
+    if settings.supabase_configured() and (
+        persist_mapping
+        or apply_canvas
+        or (not widgets_raw and led_uuid is not None)
+    ):
+        actor_uid = require_supabase_user_id(authorization)
+
     widget_pairs: list[tuple[UUID, str]] = []
     canvas_rows_cache: list[dict[str, Any]] | None = None
 
@@ -514,6 +554,12 @@ async def analyze_excel_file(
             wtype = normalize_widget_type(str(w.get("widget_type", "")))
             widget_pairs.append((cid, wtype))
     elif led_uuid and settings.supabase_configured():
+        assert actor_uid is not None
+        if not ledger_belongs_to_member(led_uuid, actor_uid):
+            raise HTTPException(
+                status_code=403,
+                detail="이 가계부(ledger)에 대한 권한이 없습니다",
+            )
         try:
             canvas_rows_cache = rpc_get_canvas_widgets(led_uuid)
         except Exception as e:
@@ -647,14 +693,18 @@ async def analyze_excel_file(
     canvas_updated = False
 
     if persist_mapping:
-        if not mem_uuid:
-            warnings.append("persist_mapping이 True인데 mem_id가 없어 저장을 건너뜁니다.")
-        elif not settings.supabase_configured():
+        if not settings.supabase_configured():
             warnings.append("Supabase 환경변수가 없어 save_import_mapping을 호출하지 않습니다.")
         else:
+            assert actor_uid is not None
+            if mem_uuid is not None and mem_uuid != actor_uid:
+                raise HTTPException(
+                    status_code=403,
+                    detail="mem_id가 로그인한 사용자와 일치하지 않습니다",
+                )
             try:
                 saved_id = rpc_save_import_mapping(
-                    mem_id=mem_uuid,
+                    mem_id=actor_uid,
                     map_id=map_id,
                     map_name=map_name,
                     mappings=mappings_for_db,
@@ -673,6 +723,12 @@ async def analyze_excel_file(
                 "Supabase 환경변수가 없어 replace_canvas_widgets를 호출하지 않습니다."
             )
         else:
+            assert actor_uid is not None
+            if not ledger_belongs_to_member(led_uuid, actor_uid):
+                raise HTTPException(
+                    status_code=403,
+                    detail="이 가계부(ledger)에 대한 권한이 없습니다",
+                )
             if canvas_rows_cache is None:
                 try:
                     canvas_rows_cache = rpc_get_canvas_widgets(led_uuid)

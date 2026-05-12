@@ -1,7 +1,10 @@
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
+from app.core.config import get_settings
 from app.routes.import_mapping import router as import_mapping_router
+from app.routes.import_records import router as import_records_router
 from app.routes.users import router as users_router
 
 app = FastAPI(
@@ -12,6 +15,15 @@ app = FastAPI(
     ),
 )
 
+_settings = get_settings()
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=list(_settings.cors_origins),
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 
 @app.get("/", include_in_schema=False)
 async def redirect_to_docs() -> RedirectResponse:
@@ -19,3 +31,4 @@ async def redirect_to_docs() -> RedirectResponse:
 
 app.include_router(users_router, prefix="/api")
 app.include_router(import_mapping_router, prefix="/api")
+app.include_router(import_records_router, prefix="/api")
