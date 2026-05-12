@@ -4,8 +4,8 @@
 import { useRef, useEffect, useState, useCallback } from 'react'
 import { ChevronDown, Save, Trash2, Sparkles } from 'lucide-react'
 import { useLocale } from '@/lib/i18n/LocaleContext'
-import { editorMessages } from '@/lib/i18n/editorMessages'
-import type { ImportMapping, MappingEntry } from '@/features/import/api'
+import { editorMessages } from '@/lib/i18n/messages/editorMessages'
+import type { ImportMapping, MappingEntry } from '@/features/import/rpc'
 
 interface ImportToolbarProps {
   presets:       ImportMapping[]

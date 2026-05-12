@@ -5,7 +5,7 @@ import { ChevronSideIcon } from '../../../_components/LeftSidebar/icons'
 import PropertiesPanel from './PropertiesPanel'
 import WidgetsPanel from './WidgetsPanel'
 import { useLocale } from '@/lib/i18n/LocaleContext'
-import { editorMessages } from '@/lib/i18n/editorMessages'
+import { editorMessages } from '@/lib/i18n/messages/editorMessages'
 
 type TabId = 'widgets' | 'properties'
 

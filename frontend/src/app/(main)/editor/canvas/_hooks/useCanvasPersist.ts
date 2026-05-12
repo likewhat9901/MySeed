@@ -2,9 +2,9 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { getCurrentUser } from '@/features/auth/api'
-import { getOrCreateLedger, getMyLedgers, createLedger } from '@/features/ledger/api'
-import { getCanvasWidgets, saveCanvasWidgets } from '@/features/editor/api'
+import { getCurrentUser } from '@/features/auth/auth'
+import { getOrCreateLedger, getMyLedgers, createLedger } from '@/features/ledger/rpc'
+import { getCanvasWidgets, saveCanvasWidgets } from '@/features/editor/rpc'
 import type { WidgetItem } from '@/features/editor/types'
 
 // ─── useCanvasPersist ─────────────────────────────────────────────────────────

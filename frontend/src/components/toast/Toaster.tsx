@@ -6,7 +6,7 @@
 // 변형(variant)별 색상과 아이콘을 VARIANT_STYLES / VARIANT_ICON 맵으로 관리.
 
 import { X, AlertTriangle, CheckCircle, Info } from "lucide-react";
-import type { ToastItem } from "@/lib/toast/ToastContext";
+import type { ToastItem } from "@/components/toast/ToastContext";
 
 const VARIANT_STYLES: Record<ToastItem["variant"], string> = {
   info:    "bg-gray-900 text-white",

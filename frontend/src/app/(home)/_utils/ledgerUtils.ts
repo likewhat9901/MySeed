@@ -1,13 +1,6 @@
 // LedgerCard / LedgerRow 공용 유틸 — 썸네일 색상 팔레트 & 시간 포맷
 
-// 장부 순서(index)에 따라 순환 적용되는 그라디언트 색상 목록
-export const THUMB_COLORS = [
-  "from-blue-900 via-blue-700 to-cyan-500",
-  "from-purple-700 via-pink-600 to-rose-400",
-  "from-green-800 via-emerald-600 to-teal-400",
-  "from-orange-700 via-amber-600 to-yellow-400",
-  "from-slate-700 via-slate-500 to-gray-400",
-];
+import { THUMB_COLORS } from '@/constants/ledger'
 
 // ISO 날짜 문자열 → "방금 전 / N분 전 / N시간 전 / N일 전" (또는 영문) 변환
 export function formatRelativeTime(isoString?: string, locale: 'ko' | 'en' = 'ko'): string {

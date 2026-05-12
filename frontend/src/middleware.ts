@@ -10,9 +10,7 @@
 
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseMiddlewareClient } from "@/lib/supabase/core/server";
-
-// 로그인이 필요한 경로 prefix 목록
-const PROTECTED_PATHS = ["/editor", "/profile"];
+import { PROTECTED_PATHS } from "@/constants/auth";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;

@@ -1,10 +1,11 @@
 'use client'
 
-import { WidgetItem, WidgetStyle, DEFAULT_WIDGET_STYLE } from '@/features/editor/types'
+import { WidgetItem, WidgetStyle } from '@/features/editor/types'
+import { DEFAULT_WIDGET_STYLE } from '@/constants/editor'
 import { useEditorContext } from '../../../_context/EditorContext'
-import { CELL_SIZE } from '../../../constants'
+import { CELL_SIZE } from '@/constants/editor'
 import { useLocale } from '@/lib/i18n/LocaleContext'
-import { editorMessages } from '@/lib/i18n/editorMessages'
+import { editorMessages } from '@/lib/i18n/messages/editorMessages'
 
 // ─── PropertiesPanel ─────────────────────────────────────────────────────────
 

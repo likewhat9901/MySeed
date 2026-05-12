@@ -2,11 +2,11 @@
 
 import Link from 'next/link'
 import { MoreVertical, Pencil, Trash2, ImagePlus, X } from 'lucide-react'
-import type { LedgerSummary } from '@/features/ledger/api'
+import type { LedgerSummary } from '@/features/ledger/rpc'
 import { formatRelativeTime, getThumbColor } from '../_utils/ledgerUtils'
-import { useLedgerItemMenu } from './useLedgerItemMenu'
+import { useLedgerItemMenu } from '../_hooks/useLedgerItemMenu'
 import { useLocale } from '@/lib/i18n/LocaleContext'
-import { homeMessages } from '@/lib/i18n/homeMessages'
+import { homeMessages } from '@/lib/i18n/messages/homeMessages'
 
 interface Props {
   ledger: LedgerSummary

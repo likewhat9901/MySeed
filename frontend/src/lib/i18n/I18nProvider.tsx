@@ -5,7 +5,7 @@
 // layout.tsx에서 <I18nProvider initialLocale={...}> 한 줄로 두 Provider를 동시에 마운트.
 
 import { LocaleProvider, type Locale } from "@/lib/i18n/LocaleContext";
-import { ToastProvider } from "@/lib/toast/ToastContext";
+import { ToastProvider } from "@/components/toast/ToastContext";
 import type { ReactNode } from "react";
 
 export default function I18nProvider({

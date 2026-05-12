@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react'
-import { WidgetItem, WidgetType, PendingWidget, DEFAULT_WIDGET_STYLE, WidgetDataBinding } from '@/features/editor/types'
+import { WidgetItem, WidgetType, PendingWidget, WidgetDataBinding } from '@/features/editor/types'
+import { DEFAULT_WIDGET_STYLE } from '@/constants/editor'
 import { getWidgetMeta, getDefaultBinding } from '@/app/(main)/editor/canvas/_widgets/registry'
 import { Viewport } from './useEditorViewport'
 

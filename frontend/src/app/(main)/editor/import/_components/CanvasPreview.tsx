@@ -5,13 +5,13 @@
 // 이미 매핑된 위젯은 초록 테두리로 강조합니다.
 
 import { useMemo, useRef, useState, useEffect, useCallback } from 'react'
-import { CELL_SIZE } from '@/constants'
+import { CELL_SIZE } from '@/constants/editor'
 import { getWidgetMeta } from '../../canvas/_widgets/registry'
-import { getMappingColor } from './mappingColors'
+import { getMappingColor } from '../_utils/mappingColors'
 import { useLocale } from '@/lib/i18n/LocaleContext'
-import { editorMessages } from '@/lib/i18n/editorMessages'
+import { editorMessages } from '@/lib/i18n/messages/editorMessages'
 import type { WidgetItem } from '@/features/editor/types'
-import type { MappingEntry } from '@/features/import/api'
+import type { MappingEntry } from '@/features/import/rpc'
 
 // ─── CanvasPreview ────────────────────────────────────────────────────────────
 // 위젯 배치를 패널 중앙에 표시.

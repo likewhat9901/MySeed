@@ -5,7 +5,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Save, ChevronDown } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useLocale } from '@/lib/i18n/LocaleContext'
-import { editorMessages } from '@/lib/i18n/editorMessages'
+import { editorMessages } from '@/lib/i18n/messages/editorMessages'
 import { useEditorContext } from '../../_context/EditorContext'
 
 export default function CanvasToolbar() {

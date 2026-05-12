@@ -2,7 +2,7 @@
 
 import { getWidgetMeta } from '../../canvas/_widgets/registry'
 import type { WidgetItem } from '@/features/editor/types'
-import type { MappingEntry } from '@/features/import/api'
+import type { MappingEntry } from '@/features/import/rpc'
 
 // ─── WidgetList ───────────────────────────────────────────────────────────────
 // Import Mapper 왼쪽 패널. 현재 캔버스 위젯 목록을 보여주고 선택할 수 있게 함.

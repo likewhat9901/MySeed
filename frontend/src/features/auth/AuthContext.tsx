@@ -3,9 +3,8 @@
 import { createContext, useContext, useState, useEffect, useRef } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import type { User } from "@supabase/supabase-js";
-import { getAuthSession, signIn, signOut, subscribeAuthState } from "@/features/auth/api";
-
-const PROTECTED_PATHS = ["/editor", "/profile"];
+import { getAuthSession, signIn, signOut, subscribeAuthState } from "@/features/auth/auth";
+import { PROTECTED_PATHS } from "@/constants/auth";
 
 // ─── Context 타입 ───────────────────────────────────────────────────────────
 

@@ -9,7 +9,7 @@ import { Trash2, ChevronDown, Plus } from 'lucide-react'
 import type { WidgetComponentProps } from '../_components/Canvas/WidgetWrapper'
 import type { TableBinding } from '@/features/editor/types'
 import { useLocale } from '@/lib/i18n/LocaleContext'
-import { widgetMessages } from '@/lib/i18n/widgetMessages'
+import { widgetMessages } from '@/lib/i18n/messages/widgetMessages'
 
 export default function TableWidget({ binding, onBindingChange, onBeforeChange, isEditMode }: WidgetComponentProps) {
   const { locale } = useLocale()

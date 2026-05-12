@@ -12,9 +12,9 @@ import MappingTemplateCard from '../_components/MappingTemplateCard'
 import MappingTemplateRow from '../_components/MappingTemplateRow'
 import { useLedgerActions } from '../_hooks/useLedgerActions'
 import { useLocale } from '@/lib/i18n/LocaleContext'
-import { homeMessages } from '@/lib/i18n/homeMessages'
+import { homeMessages } from '@/lib/i18n/messages/homeMessages'
 import { useAuth } from '@/features/auth/AuthContext'
-import { getImportMappings, deleteImportMapping, type ImportMapping } from '@/features/import/api'
+import { getImportMappings, deleteImportMapping, type ImportMapping } from '@/features/import/rpc'
 
 interface NewLedgerInputProps {
   mode: 'grid' | 'list'

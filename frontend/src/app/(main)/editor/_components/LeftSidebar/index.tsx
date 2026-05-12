@@ -3,10 +3,10 @@
 import { useRouter, usePathname } from 'next/navigation'
 import { useEditorContext } from '../../_context/EditorContext'
 import { useAuth } from '@/features/auth/AuthContext'
-import { useLedgerList } from './useLedgerList'
+import { useLedgerList } from '../../_hooks/useLedgerList'
 import LedgerRow from './LedgerRow'
 import { useLocale } from '@/lib/i18n/LocaleContext'
-import { editorMessages } from '@/lib/i18n/editorMessages'
+import { editorMessages } from '@/lib/i18n/messages/editorMessages'
 import { ChevronSideIcon, FolderIcon, PlusIconSm } from './icons'
 
 // ─── LeftSidebar ─────────────────────────────────────────────────────────────

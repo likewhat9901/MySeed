@@ -1,6 +1,6 @@
 import { useEditorContext } from '../../../_context/EditorContext'
-import { CELL_SIZE } from '../../../constants'
-import { BRAND_COLORS } from '@/features/editor/types'
+import { CELL_SIZE } from '@/constants/editor'
+import { BRAND_COLORS } from '@/constants/brand'
 import { calcGridBackground } from '../../_utils/canvasGrid'
 import WidgetWrapper from './WidgetWrapper'
 import ZoomControl from './ZoomControl'

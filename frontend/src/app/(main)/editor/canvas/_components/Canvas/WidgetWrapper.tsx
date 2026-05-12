@@ -2,7 +2,7 @@ import { PointerEvent, useState, useRef, useEffect, memo } from 'react'
 import { WidgetItem, ResizeHandle, WidgetDataBinding } from '@/features/editor/types'
 import { getWidgetMeta } from '../../_widgets/registry'
 import { useEditorContext } from '../../../_context/EditorContext'
-import { CELL_SIZE } from '../../../constants'
+import { CELL_SIZE } from '@/constants/editor'
 
 // ─── 8방향 리사이즈 핸들 정의 ────────────────────────────────────────────────
 

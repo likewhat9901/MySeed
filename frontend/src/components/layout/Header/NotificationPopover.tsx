@@ -4,7 +4,7 @@ import { useRef, useState, useCallback } from "react";
 import { Bell, CheckCheck } from "lucide-react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { useLocale } from "@/lib/i18n/LocaleContext";
-import { notificationMessages, type NotificationMessages } from "@/lib/i18n/headerMessages";
+import { notificationMessages, type NotificationMessages } from "@/lib/i18n/messages/headerMessages";
 
 type NotifType = "info" | "alert" | "success";
 

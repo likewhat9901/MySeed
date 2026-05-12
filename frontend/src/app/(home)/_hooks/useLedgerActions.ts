@@ -14,8 +14,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/features/auth/AuthContext'
-import { getMyLedgers, createLedger, renameLedger, deleteLedger } from '@/features/ledger/api'
-import type { LedgerSummary } from '@/features/ledger/api'
+import { getMyLedgers, createLedger, renameLedger, deleteLedger } from '@/features/ledger/rpc'
+import type { LedgerSummary } from '@/features/ledger/rpc'
 
 export function useLedgerActions() {
   const [ledgers, setLedgers] = useState<LedgerSummary[]>([])

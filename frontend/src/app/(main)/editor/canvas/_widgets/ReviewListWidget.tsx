@@ -7,7 +7,7 @@ import { Trash2 } from 'lucide-react'
 import type { WidgetComponentProps } from '../_components/Canvas/WidgetWrapper'
 import type { ReviewListBinding, ReviewItem, ReviewRating } from '@/features/editor/types'
 import { useLocale } from '@/lib/i18n/LocaleContext'
-import { widgetMessages } from '@/lib/i18n/widgetMessages'
+import { widgetMessages } from '@/lib/i18n/messages/widgetMessages'
 
 const RATING_CYCLE: ReviewRating[] = ['good', 'meh', 'bad', null]
 

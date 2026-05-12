@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
-import type { LedgerSummary } from '@/features/ledger/api'
+import type { LedgerSummary } from '@/features/ledger/rpc'
 import { SheetIcon, DotsIcon } from './icons'
 
 // ─── LedgerRow ────────────────────────────────────────────────────────────────

@@ -5,7 +5,7 @@ import { LayoutGrid, List } from 'lucide-react'
 import { WIDGET_REGISTRY, WidgetType } from '@/app/(main)/editor/canvas/_widgets/registry'
 import { useEditorContext } from '../../../_context/EditorContext'
 import { useLocale } from '@/lib/i18n/LocaleContext'
-import { editorMessages } from '@/lib/i18n/editorMessages'
+import { editorMessages } from '@/lib/i18n/messages/editorMessages'
 
 // ─── WidgetsPanel ─────────────────────────────────────────────────────────────
 

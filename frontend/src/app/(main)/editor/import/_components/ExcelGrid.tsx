@@ -3,8 +3,8 @@
 import { useState, useCallback, useMemo, useRef } from 'react'
 import { utils } from 'xlsx'
 import type { WorkBook } from 'xlsx'
-import { getMappingColor } from './mappingColors'
-import type { MappingEntry } from '@/features/import/api'
+import { getMappingColor } from '../_utils/mappingColors'
+import type { MappingEntry } from '@/features/import/rpc'
 
 // ─── ExcelGrid ────────────────────────────────────────────────────────────────
 // Import Mapper 오른쪽 패널. 파싱된 엑셀을 그리드로 표시하고 셀/범위 선택.

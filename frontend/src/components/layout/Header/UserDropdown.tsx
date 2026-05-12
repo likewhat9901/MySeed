@@ -6,7 +6,7 @@ import { Settings, UserCog, LogOut } from "lucide-react";
 import { useOutsideClick } from "@/hooks/useOutsideClick";
 import { useAuth } from "@/features/auth/AuthContext";
 import { useLocale } from "@/lib/i18n/LocaleContext";
-import { userDropdownMessages } from "@/lib/i18n/headerMessages";
+import { userDropdownMessages } from "@/lib/i18n/messages/headerMessages";
 
 export default function UserDropdown() {
   const { logout, user } = useAuth();

@@ -1,13 +1,13 @@
 'use client'
 
 import { createContext, useContext, useCallback, useRef, useEffect } from 'react'
-import { useViewportState, type ViewportState } from './useViewportState'
-import { useWidgetState, type WidgetState, type WidgetStateInternal } from './useWidgetState'
-import { useUIState, type UIState } from './useUIState'
+import { useViewportState, type ViewportState } from '../_hooks/useViewportState'
+import { useWidgetState, type WidgetState, type WidgetStateInternal } from '../_hooks/useWidgetState'
+import { useUIState, type UIState } from '../_hooks/useUIState'
 import { useCanvasPersist, type SaveStatus } from '../canvas/_hooks/useCanvasPersist'
 import type { WidgetItem } from '@/features/editor/types'
 
-export { CELL_SIZE } from '../constants'
+export { CELL_SIZE } from '@/constants/editor'
 
 // ─── Context 타입 ─────────────────────────────────────────────────────────────
 

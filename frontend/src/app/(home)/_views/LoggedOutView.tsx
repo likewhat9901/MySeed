@@ -7,11 +7,11 @@ import { useState, useEffect, useRef } from "react";
 import Image from "next/image";
 import { Eye, EyeOff } from "lucide-react";
 import { useAuth } from "@/features/auth/AuthContext";
-import { signInWithGoogle } from "@/features/auth/api";
+import { signInWithGoogle } from "@/features/auth/auth";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useToast } from "@/lib/toast/ToastContext";
+import { useToast } from "@/components/toast/ToastContext";
 import { useLocale } from "@/lib/i18n/LocaleContext";
-import { homeMessages } from "@/lib/i18n/homeMessages";
+import { homeMessages } from "@/lib/i18n/messages/homeMessages";
 
 export default function LoggedOutView() {
   const { login } = useAuth();

@@ -12,7 +12,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import { cookies } from "next/headers";
 import "./globals.css";
 import Header from '@/components/layout/Header';
-import ReactScanInit from '@/components/ReactScanInit';
+import ReactScanInit from '@/lib/dev/ReactScanInit';
 import I18nProvider from '@/lib/i18n/I18nProvider';
 import { AuthProvider } from '@/features/auth/AuthContext';
 import { getServerUser } from '@/lib/supabase/core/server';

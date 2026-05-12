@@ -18,20 +18,6 @@ export interface WidgetStyle {
   dropShadow: boolean
 }
 
-export const BRAND_COLORS = {
-  darker:  '#154a26',
-  dark:    '#1a5c2e',
-  DEFAULT: '#2d8c4e',
-  light:   '#16a34a',
-  darkest: '#164d26',
-} as const
-
-export const DEFAULT_WIDGET_STYLE: WidgetStyle = {
-  accentColor: BRAND_COLORS.light,
-  borderRadius: 12,
-  dropShadow: true,
-}
-
 // ── 위젯별 data_binding 타입 ──────────────────────────────────────────────────
 // 직접 입력형 위젯이 DB에 저장하는 콘텐츠. saveCanvasWidgets에서 그대로 직렬화됨.
 

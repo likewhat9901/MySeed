@@ -8,7 +8,7 @@ import UserDropdown from "@/components/layout/Header/UserDropdown";
 import NotificationPopover from "@/components/layout/Header/NotificationPopover";
 import LocaleSwitcher from "@/components/layout/Header/LocaleSwitcher";
 import { useLocale } from "@/lib/i18n/LocaleContext";
-import { navMessages } from "@/lib/i18n/headerMessages";
+import { navMessages } from "@/lib/i18n/messages/headerMessages";
 
 export default function HeaderClient() {
   const { loggedIn } = useAuth();
