@@ -20,10 +20,12 @@ export interface ImportMapping {
   regist_dt: string
 }
 
-export async function getImportMappings(memId: string): Promise<ImportMapping[]> {
+export async function getImportMappings(memId: string, ledId?: string): Promise<ImportMapping[]> {
+  const args: Record<string, string> = { p_mem_id: memId }
+  if (ledId) args.p_led_id = ledId
   const rows = await callRpc<{ map_id: string; map_name: string; mappings: unknown; regist_dt: string }[]>(
     'get_import_mappings',
-    { p_mem_id: memId },
+    args,
     [],
   )
   return rows.map(row => ({
@@ -39,10 +41,11 @@ export async function saveImportMapping(
   mapId: string,
   mapName: string,
   mappings: MappingEntry[],
+  ledId: string,
 ): Promise<string | null> {
   const rows = await callRpc<{ map_id: string }[]>(
     'save_import_mapping',
-    { p_mem_id: memId, p_map_id: mapId, p_map_name: mapName, p_mappings: mappings as never },
+    { p_mem_id: memId, p_map_id: mapId, p_map_name: mapName, p_mappings: mappings as never, p_led_id: ledId },
     [],
   )
   return rows[0]?.map_id ?? null

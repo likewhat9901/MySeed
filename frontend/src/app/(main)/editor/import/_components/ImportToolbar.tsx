@@ -15,6 +15,7 @@ interface ImportToolbarProps {
   savedFeedback: boolean
   showPresets:   boolean
   mappings:      MappingEntry[]
+  ledgerName:    string | null
   onTogglePresets:  () => void
   onLoadPreset:     (p: ImportMapping) => void
   onDeletePreset:   (mapId: string) => void
@@ -28,7 +29,7 @@ interface ImportToolbarProps {
 
 export default function ImportToolbar({
   presets, activePreset, isDirty, savingPreset, savedFeedback,
-  showPresets, mappings, hasExcel, autoMapping,
+  showPresets, mappings, hasExcel, autoMapping, ledgerName,
   onTogglePresets, onLoadPreset, onDeletePreset, onSave, onSaveNew, onOverwrite, onAutoMap,
 }: ImportToolbarProps) {
   const { locale } = useLocale()
@@ -135,6 +136,9 @@ export default function ImportToolbar({
 
       {/* 템플릿 드롭다운 */}
       <div className="relative">
+        {ledgerName && (
+          <p className="text-[10px] text-gray-400 px-1 mb-0.5">{ledgerName}</p>
+        )}
         <button
           onClick={onTogglePresets}
           className={`flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg border transition-colors ${

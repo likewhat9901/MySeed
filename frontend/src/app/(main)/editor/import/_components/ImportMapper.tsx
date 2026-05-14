@@ -17,7 +17,7 @@ import { getImportMappings, saveImportMapping, deleteImportMapping, type Mapping
 import { analyzeImportMapping } from '@/features/import/ai'
 
 export default function ImportMapper() {
-  const { widgets, updateWidgetData, canvasId } = useEditorContext()
+  const { widgets, updateWidgetData, canvasId, ledgerName } = useEditorContext()
   const { user } = useAuth()
   const { locale } = useLocale()
   const t = editorMessages[locale]
@@ -44,9 +44,9 @@ export default function ImportMapper() {
   const [savedFeedback, setSavedFeedback] = useState(false)
 
   useEffect(() => {
-    if (!user?.id) return
-    getImportMappings(user.id).then(setPresets)
-  }, [user?.id])
+    if (!user?.id || !canvasId) return
+    getImportMappings(user.id, canvasId).then(setPresets)
+  }, [user?.id, canvasId])
 
   // 장부 전환 시 매핑 상태 리셋
   const isFirstCanvasLoad = useRef(true)
@@ -169,7 +169,7 @@ export default function ImportMapper() {
   async function handleOverwritePreset(target: ImportMapping) {
     if (!user?.id || mappings.length === 0) return
     setSavingPreset(true)
-    await saveImportMapping(user.id, target.map_id, target.map_name, mappings)
+    await saveImportMapping(user.id, target.map_id, target.map_name, mappings, canvasId!)
     const updated = { ...target, mappings }
     setActivePreset(updated)
     setPresets(prev => prev.map(p => p.map_id === updated.map_id ? updated : p))
@@ -183,7 +183,7 @@ export default function ImportMapper() {
   async function handleUpdatePreset() {
     if (!user?.id || !activePreset || mappings.length === 0) return
     setSavingPreset(true)
-    await saveImportMapping(user.id, activePreset.map_id, activePreset.map_name, mappings)
+    await saveImportMapping(user.id, activePreset.map_id, activePreset.map_name, mappings, canvasId!)
     const updated = { ...activePreset, mappings }
     setActivePreset(updated)
     setPresets(prev => prev.map(p => p.map_id === updated.map_id ? updated : p))
@@ -199,8 +199,8 @@ export default function ImportMapper() {
     if (presets.some(p => p.map_name === name)) return false
     setSavingPreset(true)
     const mapId = crypto.randomUUID()
-    await saveImportMapping(user.id, mapId, name, mappings)
-    const fresh = await getImportMappings(user.id)
+    await saveImportMapping(user.id, mapId, name, mappings, canvasId!)
+    const fresh = await getImportMappings(user.id, canvasId!)
     setPresets(fresh)
     const created = fresh.find(p => p.map_id === mapId) ?? { map_id: mapId, map_name: name, mappings, regist_dt: new Date().toISOString() }
     setActivePreset(created)
@@ -253,6 +253,7 @@ export default function ImportMapper() {
         savedFeedback={savedFeedback}
         showPresets={showPresets}
         mappings={mappings}
+        ledgerName={ledgerName}
         hasExcel={!!workbook}
         autoMapping={autoMapping}
         onTogglePresets={() => setShowPresets(v => !v)}
