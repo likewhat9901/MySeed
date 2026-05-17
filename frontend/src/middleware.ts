@@ -6,7 +6,7 @@
 //   2. 비로그인 상태면 /?redirect=<원래경로>&reason=auth 로 리다이렉트
 //   3. 로그인 상태면 그냥 통과 (response 헤더에 Set-Cookie 적용)
 //
-// config.matcher: /editor/**, /profile/**
+// config.matcher: /ledger/**, /profile/**
 
 import { NextRequest, NextResponse } from "next/server";
 import { createSupabaseMiddlewareClient } from "@/lib/supabase/core/server";
@@ -35,5 +35,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/editor/:path*", "/profile/:path*"],
+  matcher: ["/ledger/:path*", "/profile/:path*"],
 };

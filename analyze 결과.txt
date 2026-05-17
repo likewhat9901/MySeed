@@ -1,0 +1,835 @@
+{
+    "file_summary": {
+        "sheets": [
+            {
+                "name": "뱅샐현황",
+                "header_row": 1,
+                "n_rows": 122,
+                "n_cols": 17,
+                "total_range": "A1:Q122",
+                "headers": [
+                    "col1",
+                    "col2",
+                    "col3",
+                    "col4",
+                    "col5",
+                    "col6",
+                    "col7",
+                    "col8",
+                    "col9",
+                    "col10",
+                    "col11",
+                    "col12",
+                    "col13",
+                    "col14",
+                    "col15",
+                    "col16",
+                    "col17"
+                ],
+                "sample_rows": [
+                    [
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                    ],
+                    [
+                        null,
+                        "1.고객정보",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                    ],
+                    [
+                        null,
+                        "사용자의 기본 정보에 해당하는 항목입니다.",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                    ],
+                    [
+                        null,
+                        "이름",
+                        "성별",
+                        "연령\n(만 나이)",
+                        "신용점수\n(KCB)",
+                        "이메일",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                    ],
+                    [
+                        null,
+                        "박천",
+                        "남",
+                        26,
+                        942,
+                        "-",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                    ],
+                    [
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                    ],
+                    [
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                    ],
+                    [
+                        null,
+                        "2.현금흐름현황",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                    ]
+                ],
+                "columns": [
+                    {
+                        "letter": "A",
+                        "header": "col1",
+                        "type": "empty",
+                        "non_null": 0,
+                        "distinct_sample": [],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "B",
+                        "header": "col2",
+                        "type": "mixed",
+                        "non_null": 72,
+                        "distinct_sample": [
+                            "1.고객정보",
+                            "사용자의 기본 정보에 해당하는 항목입니다.",
+                            "이름",
+                            "박천",
+                            "2.현금흐름현황"
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "C",
+                        "header": "col3",
+                        "type": "mixed",
+                        "non_null": 85,
+                        "distinct_sample": [
+                            "성별",
+                            "남",
+                            "총계",
+                            120955,
+                            6067670
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "D",
+                        "header": "col4",
+                        "type": "mixed",
+                        "non_null": 44,
+                        "distinct_sample": [
+                            "연령\n(만 나이)",
+                            26,
+                            "월평균",
+                            9304.23076923077,
+                            466743.8461538461
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "E",
+                        "header": "col5",
+                        "type": "mixed",
+                        "non_null": 75,
+                        "distinct_sample": [
+                            "신용점수\n(KCB)",
+                            942,
+                            "2025-01",
+                            124,
+                            0
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "F",
+                        "header": "col6",
+                        "type": "mixed",
+                        "non_null": 51,
+                        "distinct_sample": [
+                            "이메일",
+                            "-",
+                            "2025-02",
+                            0,
+                            159040
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "G",
+                        "header": "col7",
+                        "type": "mixed",
+                        "non_null": 46,
+                        "distinct_sample": [
+                            "2025-03",
+                            111,
+                            0,
+                            556625,
+                            600000
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "H",
+                        "header": "col8",
+                        "type": "mixed",
+                        "non_null": 40,
+                        "distinct_sample": [
+                            "2025-04",
+                            0,
+                            626203,
+                            200000,
+                            20000
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "I",
+                        "header": "col9",
+                        "type": "mixed",
+                        "non_null": 35,
+                        "distinct_sample": [
+                            "2025-05",
+                            17660,
+                            0,
+                            556630,
+                            200000
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "J",
+                        "header": "col10",
+                        "type": "mixed",
+                        "non_null": 31,
+                        "distinct_sample": [
+                            "2025-06",
+                            181,
+                            0,
+                            556625,
+                            200000
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "K",
+                        "header": "col11",
+                        "type": "mixed",
+                        "non_null": 27,
+                        "distinct_sample": [
+                            "2025-07",
+                            10,
+                            0,
+                            626203,
+                            324900
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "L",
+                        "header": "col12",
+                        "type": "mixed",
+                        "non_null": 27,
+                        "distinct_sample": [
+                            "2025-08",
+                            833,
+                            0,
+                            556625,
+                            400000
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "M",
+                        "header": "col13",
+                        "type": "mixed",
+                        "non_null": 27,
+                        "distinct_sample": [
+                            "2025-09",
+                            414,
+                            0,
+                            626203,
+                            200000
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "N",
+                        "header": "col14",
+                        "type": "mixed",
+                        "non_null": 27,
+                        "distinct_sample": [
+                            "2025-10",
+                            1407,
+                            0,
+                            417469,
+                            1
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "O",
+                        "header": "col15",
+                        "type": "mixed",
+                        "non_null": 27,
+                        "distinct_sample": [
+                            "2025-11",
+                            20,
+                            1530370,
+                            0,
+                            210000
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "P",
+                        "header": "col16",
+                        "type": "mixed",
+                        "non_null": 27,
+                        "distinct_sample": [
+                            "2025-12",
+                            195,
+                            2285650,
+                            0,
+                            296000
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "Q",
+                        "header": "col17",
+                        "type": "mixed",
+                        "non_null": 27,
+                        "distinct_sample": [
+                            "2026-01",
+                            100000,
+                            2251650,
+                            0,
+                            2351650
+                        ],
+                        "numeric_stats": null
+                    }
+                ]
+            },
+            {
+                "name": "가계부 내역",
+                "header_row": 1,
+                "n_rows": 1699,
+                "n_cols": 10,
+                "total_range": "A1:J1699",
+                "headers": [
+                    "날짜",
+                    "시간",
+                    "타입",
+                    "대분류",
+                    "소분류",
+                    "내용",
+                    "금액",
+                    "화폐",
+                    "결제수단",
+                    "메모"
+                ],
+                "sample_rows": [
+                    [
+                        46027,
+                        0.5224768518518519,
+                        "지출",
+                        "교통",
+                        "미분류",
+                        "모바일기후동행카드",
+                        -55000,
+                        "KRW",
+                        "kt-현대카드M Edition3(통신할인형2.0)",
+                        null
+                    ],
+                    [
+                        46027,
+                        0.3338310185185185,
+                        "수입",
+                        "급여",
+                        "미분류",
+                        "급여",
+                        2251650,
+                        "KRW",
+                        "보통예금(IBKONE앱통장)",
+                        null
+                    ],
+                    [
+                        46026,
+                        0.8558680555555556,
+                        "지출",
+                        "주거/통신",
+                        "미분류",
+                        "최정구",
+                        -13000,
+                        "KRW",
+                        "KB able Plus통장-저축예금",
+                        null
+                    ],
+                    [
+                        46026,
+                        0.7724305555555555,
+                        "이체",
+                        "이체",
+                        "미분류",
+                        "박진영",
+                        -13000,
+                        "KRW",
+                        "KB able Plus통장-저축예금",
+                        null
+                    ],
+                    [
+                        46026,
+                        0.7721643518518518,
+                        "이체",
+                        "이체",
+                        "미분류",
+                        "양동수",
+                        7000,
+                        "KRW",
+                        "KB able Plus통장-저축예금",
+                        null
+                    ],
+                    [
+                        46026,
+                        0.5030092592592592,
+                        "지출",
+                        "경조사",
+                        "미분류",
+                        "주식회사 카카오",
+                        -29000,
+                        "KRW",
+                        "카카오페이 간편결제",
+                        null
+                    ],
+                    [
+                        46026,
+                        0.300787037037037,
+                        "지출",
+                        "카페/간식",
+                        "미분류",
+                        "페이플",
+                        -5240,
+                        "KRW",
+                        "LG U+ NU우리카드II",
+                        null
+                    ],
+                    [
+                        46025,
+                        0.5194675925925926,
+                        "지출",
+                        "문화/여가",
+                        "미분류",
+                        "디앤오곤지암CC리조트",
+                        -2000,
+                        "KRW",
+                        "kt-현대카드M Edition3(통신할인형2.0)",
+                        null
+                    ]
+                ],
+                "columns": [
+                    {
+                        "letter": "A",
+                        "header": "날짜",
+                        "type": "number",
+                        "non_null": 1698,
+                        "distinct_sample": [
+                            46027,
+                            46026,
+                            46025,
+                            46024,
+                            46023
+                        ],
+                        "numeric_stats": {
+                            "min": 45662.0,
+                            "max": 46027.0,
+                            "sum": 77836450.0,
+                            "avg": 45840.076560659596,
+                            "count": 1698.0
+                        }
+                    },
+                    {
+                        "letter": "B",
+                        "header": "시간",
+                        "type": "number",
+                        "non_null": 1698,
+                        "distinct_sample": [
+                            0.5224768518518519,
+                            0.3338310185185185,
+                            0.8558680555555556,
+                            0.7724305555555555,
+                            0.7721643518518518
+                        ],
+                        "numeric_stats": {
+                            "min": 0.0,
+                            "max": 0.9992592592592593,
+                            "sum": 943.8589930555555,
+                            "avg": 0.5558651313636959,
+                            "count": 1698.0
+                        }
+                    },
+                    {
+                        "letter": "C",
+                        "header": "타입",
+                        "type": "string",
+                        "non_null": 1698,
+                        "distinct_sample": [
+                            "지출",
+                            "수입",
+                            "이체"
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "D",
+                        "header": "대분류",
+                        "type": "string",
+                        "non_null": 1698,
+                        "distinct_sample": [
+                            "교통",
+                            "급여",
+                            "주거/통신",
+                            "이체",
+                            "경조사"
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "E",
+                        "header": "소분류",
+                        "type": "string",
+                        "non_null": 1698,
+                        "distinct_sample": [
+                            "미분류"
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "F",
+                        "header": "내용",
+                        "type": "string",
+                        "non_null": 1698,
+                        "distinct_sample": [
+                            "모바일기후동행카드",
+                            "급여",
+                            "최정구",
+                            "박진영",
+                            "양동수"
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "G",
+                        "header": "금액",
+                        "type": "number",
+                        "non_null": 1698,
+                        "distinct_sample": [
+                            -55000,
+                            2251650,
+                            -13000,
+                            7000,
+                            -29000
+                        ],
+                        "numeric_stats": {
+                            "min": -4500000.0,
+                            "max": 2251650.0,
+                            "sum": -15348548.0,
+                            "avg": -9039.19199057715,
+                            "count": 1698.0
+                        }
+                    },
+                    {
+                        "letter": "H",
+                        "header": "화폐",
+                        "type": "string",
+                        "non_null": 1698,
+                        "distinct_sample": [
+                            "KRW"
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "I",
+                        "header": "결제수단",
+                        "type": "string",
+                        "non_null": 1698,
+                        "distinct_sample": [
+                            "kt-현대카드M Edition3(통신할인형2.0)",
+                            "보통예금(IBKONE앱통장)",
+                            "KB able Plus통장-저축예금",
+                            "카카오페이 간편결제",
+                            "LG U+ NU우리카드II"
+                        ],
+                        "numeric_stats": null
+                    },
+                    {
+                        "letter": "J",
+                        "header": "메모",
+                        "type": "string",
+                        "non_null": 144,
+                        "distinct_sample": [
+                            "곱창",
+                            "신점",
+                            "12.31 모임",
+                            "동수 선임",
+                            "번개"
+                        ],
+                        "numeric_stats": null
+                    }
+                ]
+            }
+        ]
+    },
+    "recommendations": [
+        {
+            "con_id": "4e819573-bb0a-4ea2-bcca-d9d10ad22e65",
+            "widget_type": "table",
+            "sheet": "뱅샐현황",
+            "address": "A1:Q9",
+            "aggregation": "none",
+            "display_form": "table",
+            "confidence": 0.72,
+            "reason": "table 위젯은 전체 시트 표 범위를 그대로 매핑합니다.",
+            "preview": [
+                "col1",
+                "col2",
+                "col3",
+                "col4",
+                "col5",
+                "col6",
+                "col7",
+                "col8",
+                "col9",
+                "col10",
+                "col11",
+                "col12",
+                "col13",
+                "col14",
+                "col15",
+                "col16",
+                "col17",
+                null,
+                null,
+                null
+            ]
+        },
+        {
+            "con_id": "51e326bf-245c-4b4f-8a6f-24408679b61b",
+            "widget_type": "table",
+            "sheet": "뱅샐현황",
+            "address": "A1:Q9",
+            "aggregation": "none",
+            "display_form": "table",
+            "confidence": 0.72,
+            "reason": "table 위젯은 전체 시트 표 범위를 그대로 매핑합니다.",
+            "preview": [
+                "col1",
+                "col2",
+                "col3",
+                "col4",
+                "col5",
+                "col6",
+                "col7",
+                "col8",
+                "col9",
+                "col10",
+                "col11",
+                "col12",
+                "col13",
+                "col14",
+                "col15",
+                "col16",
+                "col17",
+                null,
+                null,
+                null
+            ]
+        },
+        {
+            "con_id": "dfe4f278-e671-4655-b8ea-3d698dd7a3c6",
+            "widget_type": "post-it",
+            "sheet": "뱅샐현황",
+            "address": "A2:A9",
+            "aggregation": "none",
+            "display_form": "list",
+            "confidence": 0.15,
+            "reason": "'col1' 컬럼이 'post-it'와 가장 유사하여 A2:A9를 추천합니다.",
+            "preview": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            ]
+        },
+        {
+            "con_id": "848b14ea-ceae-4c99-bbaf-76b20bf77a13",
+            "widget_type": "review-list",
+            "sheet": "뱅샐현황",
+            "address": "A2:A9",
+            "aggregation": "none",
+            "display_form": "list",
+            "confidence": 0.107,
+            "reason": "'col1' 컬럼이 'review-list'와 가장 유사하여 A2:A9를 추천합니다.",
+            "preview": [
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+            ]
+        }
+    ],
+    "draft": {
+        "map_id": "f7b593cd-60e5-4c26-8421-3b0c8f04b2ec",
+        "map_name": "자동 매핑",
+        "mappings": [
+            {
+                "con_id": "4e819573-bb0a-4ea2-bcca-d9d10ad22e65",
+                "widget_type": "table",
+                "sheet": "뱅샐현황",
+                "address": "A1:Q9",
+                "aggregation": "none",
+                "display_form": "table"
+            },
+            {
+                "con_id": "51e326bf-245c-4b4f-8a6f-24408679b61b",
+                "widget_type": "table",
+                "sheet": "뱅샐현황",
+                "address": "A1:Q9",
+                "aggregation": "none",
+                "display_form": "table"
+            },
+            {
+                "con_id": "dfe4f278-e671-4655-b8ea-3d698dd7a3c6",
+                "widget_type": "post-it",
+                "sheet": "뱅샐현황",
+                "address": "A2:A9",
+                "aggregation": "none",
+                "display_form": "list"
+            },
+            {
+                "con_id": "848b14ea-ceae-4c99-bbaf-76b20bf77a13",
+                "widget_type": "review-list",
+                "sheet": "뱅샐현황",
+                "address": "A2:A9",
+                "aggregation": "none",
+                "display_form": "list"
+            }
+        ],
+        "regist_dt": null
+    },
+    "mapping_saved": false,
+    "canvas_updated": false,
+    "warnings": []
+}

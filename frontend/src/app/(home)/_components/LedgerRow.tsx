@@ -34,7 +34,7 @@ export default function LedgerRow({ ledger, index, onRename, onDelete, onCoverCh
   return (
     <div className="flex items-center gap-4 bg-white border border-gray-200 rounded-xl px-4 py-3 hover:shadow-sm transition-shadow">
       {/* 썸네일 */}
-      <Link href={`/editor?led=${ledger.led_id}`} className="shrink-0 relative">
+      <Link href={`/ledger?led=${ledger.led_id}`} className="shrink-0 relative">
         {ledger.cover_url ? (
           <img
             src={ledger.cover_url}
@@ -65,7 +65,7 @@ export default function LedgerRow({ ledger, index, onRename, onDelete, onCoverCh
             className="w-full text-sm font-semibold text-gray-800 border-b border-brand outline-none bg-transparent"
           />
         ) : (
-          <Link href={`/editor?led=${ledger.led_id}`} className="block text-sm font-semibold text-gray-800 truncate hover:underline">
+          <Link href={`/ledger?led=${ledger.led_id}`} className="block text-sm font-semibold text-gray-800 truncate hover:underline">
             {ledger.led_name}
           </Link>
         )}

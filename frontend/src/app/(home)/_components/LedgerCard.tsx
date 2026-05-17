@@ -34,7 +34,7 @@ export default function LedgerCard({ ledger, index, onRename, onDelete, onCoverC
   return (
     <div className="bg-white border border-seed-muted rounded-2xl hover:shadow-[0_4px_20px_-4px_rgba(45,140,78,0.15)] transition-shadow">
       {/* 썸네일 */}
-      <Link href={`/editor?led=${ledger.led_id}`} className="block overflow-hidden rounded-t-2xl relative">
+      <Link href={`/ledger?led=${ledger.led_id}`} className="block overflow-hidden rounded-t-2xl relative">
         {ledger.cover_url ? (
           <img
             src={ledger.cover_url}
@@ -66,7 +66,7 @@ export default function LedgerCard({ ledger, index, onRename, onDelete, onCoverC
               className="flex-1 text-xs font-semibold text-gray-800 border-b border-brand outline-none bg-transparent leading-snug"
             />
           ) : (
-            <Link href={`/editor?led=${ledger.led_id}`} className="flex-1 text-xs font-semibold text-gray-800 leading-snug hover:underline truncate">
+            <Link href={`/ledger?led=${ledger.led_id}`} className="flex-1 text-xs font-semibold text-gray-800 leading-snug hover:underline truncate">
               {ledger.led_name}
             </Link>
           )}

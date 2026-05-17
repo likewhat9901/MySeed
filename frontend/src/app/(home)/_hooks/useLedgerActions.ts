@@ -55,7 +55,7 @@ export function useLedgerActions() {
     setCreating(false)
     setNewName('')
     const ledId = await createLedger(user.id, name)
-    if (ledId) router.push(`/editor?led=${ledId}`)
+    if (ledId) router.push(`/ledger?led=${ledId}`)
   }
 
   const handleRename = async (id: string, name: string) => {

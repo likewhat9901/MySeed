@@ -4,7 +4,7 @@
 import { MoreVertical, Trash2, Link2 } from 'lucide-react'
 import { useState, useRef, useEffect } from 'react'
 import { formatRelativeTime } from '../_utils/ledgerUtils'
-import type { ImportMapping } from '@/features/import/rpc'
+import type { ImportMapping } from '@/features/ledger/record/rpc'
 import { useLocale } from '@/lib/i18n/LocaleContext'
 import { homeMessages } from '@/lib/i18n/messages/homeMessages'
 

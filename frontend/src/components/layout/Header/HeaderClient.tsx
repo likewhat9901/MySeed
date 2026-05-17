@@ -19,7 +19,9 @@ export default function HeaderClient() {
     <>
       {/* 가운데 Nav Links — md 이상에서만 표시 */}
       <div className="hidden md:flex items-center gap-6 text-sm text-gray-600">
-        <a href="/editor" className="hover:text-gray-900 whitespace-nowrap">{t.navLedger}</a>
+        <a href="/ledger" className="hover:text-gray-900 whitespace-nowrap">{t.navLedger}</a>
+        <a href="/card" className="hover:text-gray-900 whitespace-nowrap">{t.navCard}</a>
+        <a href="/invest" className="hover:text-gray-900 whitespace-nowrap">{t.navInvest}</a>
         {process.env.NODE_ENV === 'development' && (
           <>
             <a href="/error-test" className="text-red-500 hover:text-red-700 whitespace-nowrap">{t.navErrorTest}</a>

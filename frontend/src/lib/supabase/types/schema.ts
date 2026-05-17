@@ -10,7 +10,6 @@
 //   npm run gen:types  →  database.types.ts 갱신  →  이 파일에서 빨간줄 확인 후 수정
 
 import type { Tables } from "./database.types";
-import type { WidgetStyle } from "@/features/editor/types";
 
 // ── position jsonb 구조 ────────────────────────────────────────────────────────
 // tb_widget_config.position 컬럼의 실제 JSON 형태.
@@ -20,7 +19,7 @@ export interface WidgetPosition {
   y: number
   w: number
   h: number
-  style?: WidgetStyle
+  style?: Record<string, unknown>
 }
 
 // ══════════════════════════════════════════════════════════════════════════════

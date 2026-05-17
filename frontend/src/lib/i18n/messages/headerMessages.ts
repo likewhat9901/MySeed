@@ -13,6 +13,8 @@
 export const navMessages = {
   en: {
     navLedger:         "Ledger",
+    navCard:           "Card",
+    navInvest:         "Invest",
     navErrorTest:      "Error Test",
     navNotFound:       "Not Found",
     searchPlaceholder: "Search accounts...",
@@ -22,6 +24,8 @@ export const navMessages = {
   },
   ko: {
     navLedger:         "가계부",
+    navCard:           "카드",
+    navInvest:         "투자",
     navErrorTest:      "에러 테스트",
     navNotFound:       "찾을 수 없음",
     searchPlaceholder: "계좌 검색...",
