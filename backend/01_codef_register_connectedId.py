@@ -3,11 +3,24 @@ from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5 as PKCS1
 from urllib import parse
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+sandbox_client_id = os.getenv("sandbox_client_id")
+sandbox_client_secret = os.getenv("sandbox_client_secret")
+demo_client_id = os.getenv("demo_client_id")
+demo_client_secret = os.getenv("demo_client_secret")
+client_id = os.getenv("client_id")
+client_secret = os.getenv("client_secret")
+public_key = os.getenv("public_key")
+
+sandbox_url = os.getenv("sandbox_url")
+demo_url = os.getenv("demo_url")
+product_url = os.getenv("product_url")
+
 # 위에서 쓰던 것과 동일하게 설정
 USE_DEMO = True
-demo_client_id = "ef27cfaa-10c1-4470-adac-60ba476273f9"
-demo_client_secret = "83160c33-9045-4915-86d8-809473cdf5c3"
-public_key = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwdrckp+oN+8PhXcCZUQjauYP9LC3CN2NiUjHAtcuEu7NyL/RsXUFeX+9bPh2cAQFt0XXp5Z2cCb/3insfSQ2bo9KWLeJgfvteJ5ZiDUNY7H/mTUyZoYly1EOqXB3m+j+UWGXDkpvrV4i+gYFn8iPDBvu2OAK+4J+f7A3PErlnfR7V/mx7G04wdjlXi9FcqGsgtTJvnWTkvbxaiVBg7ZPsgZADu2iXSRsGaln2tLvu0HZUW86k/FjFAws2I7xrsDDWTJpWhR8c5Ldbo/THuN165ZOq6koHInb/3DEQTujebF3GUGKLcQGSTGGZwH3dqHTWrzeymGbxNj+bYK46Tw/twIDAQAB"  # 동일한 public_key
 
 def encrypt_rsa(text, public_key):
     key_der = base64.b64decode(public_key)
@@ -27,7 +40,7 @@ token_res = requests.post(
     }
 )
 access_token = token_res.json()["access_token"]
-base_url = "https://sandbox.codef.io" if USE_DEMO else "https://api.codef.io"
+base_url = demo_url if USE_DEMO else product_url
 
 # 계정 등록
 res = requests.post(
@@ -37,11 +50,13 @@ res = requests.post(
             "countryCode": "KR",
             "businessType": "CD",
             "clientType": "P",
-            "organization": "0301",
+            "organization": "0302",
             "loginType": "1",
-            "id": "parkkochen",
+            "id": "likewhat9901",
             "password": encrypt_rsa("qag70025353@", public_key),
             "birthDate": "19990129",
+            "cardNo": "4033020225873307",
+            "cardPassword": encrypt_rsa("7596", public_key),
         }]
     },
     headers={"Authorization": f"Bearer {access_token}"}

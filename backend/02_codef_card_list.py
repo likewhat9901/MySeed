@@ -13,21 +13,29 @@ from urllib import parse
 from Crypto.PublicKey import RSA
 from Crypto.Cipher import PKCS1_v1_5 as PKCS1
 
+import os
+from dotenv import load_dotenv
+load_dotenv()
+
+sandbox_client_id = os.getenv("sandbox_client_id")
+sandbox_client_secret = os.getenv("sandbox_client_secret")
+demo_client_id = os.getenv("demo_client_id")
+demo_client_secret = os.getenv("demo_client_secret")
+client_id = os.getenv("client_id")
+client_secret = os.getenv("client_secret")
+public_key = os.getenv("public_key")
+
+sandbox_url = os.getenv("sandbox_url")
+demo_url = os.getenv("demo_url")
+product_url = os.getenv("product_url")
+
+connectedId_kb = os.getenv("connectedId_kb")
+connectedId_hyundaicard = os.getenv("connectedId_hyundaicard")
+
 # ============================================================================
 # 1. 환경 설정 (사용자 작성 필요, https://codef.io/account/keys 참조)
 # ============================================================================
 USE_DEMO = True  # True: DEMO 서버, False: PRODUCT 서버
-
-# DEMO(테스트) 클라이언트 정보 
-demo_client_id = "ef27cfaa-10c1-4470-adac-60ba476273f9"
-demo_client_secret = "83160c33-9045-4915-86d8-809473cdf5c3"
-
-# PRODUCT(정식) 클라이언트 정보
-client_id = "발급받은_client_id"
-client_secret = "발급받은_client_secret"
-
-# RSA 퍼블릭키 정보
-public_key = "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwdrckp+oN+8PhXcCZUQjauYP9LC3CN2NiUjHAtcuEu7NyL/RsXUFeX+9bPh2cAQFt0XXp5Z2cCb/3insfSQ2bo9KWLeJgfvteJ5ZiDUNY7H/mTUyZoYly1EOqXB3m+j+UWGXDkpvrV4i+gYFn8iPDBvu2OAK+4J+f7A3PErlnfR7V/mx7G04wdjlXi9FcqGsgtTJvnWTkvbxaiVBg7ZPsgZADu2iXSRsGaln2tLvu0HZUW86k/FjFAws2I7xrsDDWTJpWhR8c5Ldbo/THuN165ZOq6koHInb/3DEQTujebF3GUGKLcQGSTGGZwH3dqHTWrzeymGbxNj+bYK46Tw/twIDAQAB"
 
 # ============================================================================
 # 2. RSA 암호화 함수 (비밀번호 암호화가 필요한 일부 API에서만 사용, 필요 없는 경우 미호출)
@@ -53,11 +61,11 @@ def encrypt_rsa(text: str, public_key: str) -> str:
 if USE_DEMO:
     selected_client_id = demo_client_id
     selected_client_secret = demo_client_secret
-    base_url = "https://sandbox.codef.io"
+    base_url = demo_url
 else:
     selected_client_id = client_id
     selected_client_secret = client_secret
-    base_url = "https://api.codef.io"
+    base_url = product_url
 
 client_info = f"{selected_client_id}:{selected_client_secret}"
 b64_auth = base64.b64encode(client_info.encode('utf-8')).decode('utf-8')
@@ -91,7 +99,7 @@ parameter = {
 #    "cardPassword": encrypt_rsa("카드비밀번호", public_key),  # ⚪ 선택입력 # (RSA 암호화된 카드 비밀번호)
 # 현대카드 아이디로그인(필수) : 카드 비밀번호 4자리
 # KB 카드소지확인 인증이 필요한 경우 : 카드비밀번호 앞 2자리
-    "connectedId": "byi1wYwD40k8hEIiXl6bRF",  # ✅ 필수입력
+    "connectedId": connectedId_kb,  # ✅ 필수입력
 }
 endpoint = "/v1/kr/card/p/account/card-list"
 
