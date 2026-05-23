@@ -38,6 +38,7 @@ connectedId_kb_NPKI = os.getenv("connectedId_kb_NPKI")
 # ============================================================================
 USE_DEMO = True  # True: DEMO 서버, False: PRODUCT 서버
 
+
 # ============================================================================
 # 2. RSA 암호화 함수 (비밀번호 암호화가 필요한 일부 API에서만 사용, 필요 없는 경우 미호출)
 # ============================================================================
@@ -90,26 +91,17 @@ access_token = token_res.json().get("access_token")
 # 4. API 호출 정보 (사용자 작성 필요)
 # ============================================================================
 parameter = {
-    "organization": "0301",  # ✅ 필수입력
-    "birthDate": "19990129",  # ⚪ 선택입력
-    "startDate": "20260501",  # ✅ 필수입력
-    "endDate": "20260517",  # ✅ 필수입력
-    "orderBy": "0",  # ✅ 필수입력 # "0": 최신순, "1": 과거순 (default :"0")
-    "inquiryType": "1",  # ⚪ 선택입력 # "0": 카드별 조회, "1": 전체조회 (default: "0")
-#    "cardName": "카드명",  # ⚪ 선택입력 # inquiryType="0"인 경우
-# 보유카드 조회 결과의 카드명을 사용
-#    "duplicateCardIdx": "중복카드 일련번호",  # ⚪ 선택입력 # [중복카드 선택 순번] 
-# inquiryType="0"인 경우 필수
-# "1" 이상: 승인내역 조회 카드목록에서 중복된 카드의 순서
-    # "cardNo": "4033020225873307",  # ⚪ 선택입력 # 현대카드 아이디로그인(필수) : 인증할 카드번호
-# KB 카드소지확인 인증이 필요한 경우 : 카드번호 전체
-    # "cardPassword": encrypt_rsa("7596", public_key),  # ⚪ 선택입력 # (RSA 암호화된 카드 비밀번호)
-# 현대카드 아이디로그인(필수) : 카드 비밀번호 4자리
-# KB 카드소지확인 인증이 필요한 경우 : 카드비밀번호 앞 2자리
+    "organization": "0301",
     "connectedId": connectedId_kb_NPKI,  # ✅ 필수입력
-    # "memberStoreInfoType": "3",  # ⚪ 선택입력 # "0": 미포함, "1": 가맹점 포함, "2":부가세 포함, "3":전체 (가맹점 +부가세) 포함 (default: "0")
+    "inquiryType": "0",  # ⚪ 선택입력 # "0" : 등록여부, "1" : 인증서 자동등록 포함 (default : 0)
+    "identity": "9901291068418",  # ⚪ 선택입력 # <code>inquiryType="1" 필수</code><br> "birthDate" 값 입력시 주민번호 뒤 7자리만 입력
+    #"birthDate": "990129",  # ⚪ 선택입력 # <code>inquiryType="1" 입력</code><br>주민번호 뒷자리만 암호화하는 경우 사용 (yyMMdd)
+    #"userId": "로그인 아이디",  # ⚪ 선택입력 # <code>inquiryType="1" 필수</code>
+    #"cardNo": "카드번호",  # ⚪ 선택입력 # <code>inquiryType="1" 필수</code><br>현대카드 아이디로그인(필수) : 인증할 카드번호<br>KB 카드소지확인 인증이 필요한 경우 : 카드번호 전체
+    #"cardPassword": encrypt_rsa("카드비번", public_key),  # ⚪ 선택입력 # <code>inquiryType="1" 필수</code><br>(RSA 암호화된 카드 비밀번호)<br>현대카드 아이디로그인(필수) : 카드 비밀번호 4자리<br>KB 카드소지확인 인증이 필요한 경우 : 카드비밀번호 앞 2자리
+    #"cardValidPeriod": "유효기간",  # ⚪ 선택입력 # <code>inquiryType="1" 필수</code>
 }
-endpoint = "/v1/kr/card/p/account/approval-list"
+endpoint = "/v1/kr/card/p/user/registration-status"
 
 # ============================================================================
 # 5. API 호출

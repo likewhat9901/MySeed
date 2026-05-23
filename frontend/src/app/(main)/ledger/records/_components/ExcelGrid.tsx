@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback, useMemo, useRef } from 'react'
+import { useState, useCallback, useMemo, useRef, useEffect } from 'react'
 import { utils } from 'xlsx'
 import type { WorkBook } from 'xlsx'
 import { getMappingColor } from '../_utils/mappingColors'
@@ -81,8 +81,24 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
   const [pendingAddr,     setPendingAddr]     = useState<string | null>(null)
   const [pendingStart,    setPendingStart]    = useState<CellPos | null>(null)
   const [selectedColumns, setSelectedColumns] = useState<RecordColumn[]>([])
+  const [anchorRect,      setAnchorRect]      = useState<{ right: number; top: number } | null>(null)
 
   const scrollRef = useRef<HTMLDivElement>(null)
+  const tableRef  = useRef<HTMLTableElement>(null)
+
+  // 팝업이 열린 상태에서 스크롤하면 닫기
+  useEffect(() => {
+    const el = scrollRef.current
+    if (!el || !pendingAddr) return
+    const close = () => {
+      setPendingAddr(null)
+      setPendingStart(null)
+      setSelectedColumns([])
+      setAnchorRect(null)
+    }
+    el.addEventListener('scroll', close, { passive: true })
+    return () => el.removeEventListener('scroll', close)
+  }, [pendingAddr])
 
   const sheet = workbook.Sheets[selectedSheet]
   const data: (string | number | null)[][] = sheet
@@ -125,25 +141,32 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
     return row >= activeRange.r0 && row <= activeRange.r1 && col >= activeRange.c0 && col <= activeRange.c1
   }, [activeRange])
 
-  // 팝업 위치: 선택 범위 첫 열 기준, 위 공간 부족하면 아래로
+  // 팝업 위치: getBoundingClientRect로 읽은 실제 셀 위치 기준.
+  // anchorRect는 컨테이너 기준 뷰포트 좌표 → position:fixed 로 붙임.
   const popupStyle = useMemo(() => {
-    if (!pendingStart || !pendingParsed) return null
-    const scale = zoom / 100
-    const left     = HEAD_W + pendingParsed.c0 * COL_W
-    const topOfSel = HEAD_H + pendingParsed.r0 * ROW_H
-    const scrollLeft = scrollRef.current?.scrollLeft ?? 0
-    const scrollTop  = scrollRef.current?.scrollTop  ?? 0
-    const pixelTop = topOfSel * scale - scrollTop
-    const POPUP_H = 140 // 팝업 대략 높이
-    const showBelow = pixelTop < POPUP_H
-    return {
-      left: (left * scale - scrollLeft) + 'px',
-      ...(showBelow
-        ? { top:    (HEAD_H + pendingParsed.r1 * ROW_H + ROW_H) * scale - scrollTop + 'px' }
-        : { top:    pixelTop + 'px', transform: 'translateY(-100%)' }
-      ),
-    }
-  }, [pendingStart, pendingParsed, zoom])
+    if (!anchorRect) return null
+    const container = scrollRef.current
+    if (!container) return null
+
+    const POPUP_W = 288  // w-72
+    const POPUP_H = 160
+    const GAP     = 8
+    const viewW   = container.clientWidth
+    const viewH   = container.clientHeight
+
+    const enoughRight  = anchorRect.right + GAP + POPUP_W <= viewW
+    const enoughBottom = anchorRect.top   + POPUP_H       <= viewH
+
+    const containerRect = container.getBoundingClientRect()
+    const left = enoughRight
+      ? containerRect.left + anchorRect.right + GAP
+      : containerRect.left + anchorRect.right - POPUP_W - GAP
+    const top = enoughBottom
+      ? containerRect.top + anchorRect.top
+      : containerRect.top + anchorRect.top - POPUP_H + ROW_H
+
+    return { position: 'fixed' as const, left: left + 'px', top: top + 'px' }
+  }, [anchorRect])
 
   function onMouseDown(row: number, col: number) {
     setDragStart({ row, col })
@@ -170,6 +193,25 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
     setPendingAddr(addr)
     setPendingStart(normStart)
     setSelectedColumns([])
+
+    // 선택 범위 오른쪽 끝 셀의 실제 DOM 위치를 저장
+    const endCol  = Math.max(dragStart.col, col)
+    const endRow  = Math.min(dragStart.row, row)
+    const container = scrollRef.current
+    const table     = tableRef.current
+    if (container && table) {
+      // thead(1행) + tbody의 endRow번째 tr → endCol+1번째 td (+1은 행번호 열)
+      const tr = table.tBodies[0]?.rows[endRow]
+      const td = tr?.cells[endCol + 1]
+      if (td) {
+        const tdRect        = td.getBoundingClientRect()
+        const containerRect = container.getBoundingClientRect()
+        setAnchorRect({
+          right: tdRect.right - containerRect.left,
+          top:   tdRect.top   - containerRect.top,
+        })
+      }
+    }
   }
 
   function toggleColumn(col: RecordColumn) {
@@ -191,12 +233,14 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
     setPendingAddr(null)
     setPendingStart(null)
     setSelectedColumns([])
+    setAnchorRect(null)
   }
 
   function cancelMapping() {
     setPendingAddr(null)
     setPendingStart(null)
     setSelectedColumns([])
+    setAnchorRect(null)
   }
 
   const cellVal = (row: number, col: number): string => {
@@ -250,6 +294,7 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
       <div className="flex-1 overflow-auto relative" ref={scrollRef}>
         <div style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'top left', width: `${10000 / zoom}%` }}>
           <table
+            ref={tableRef}
             className="border-collapse text-xs"
             onMouseLeave={() => {
               if (isDragging && dragStart && dragEnd) {
@@ -303,10 +348,10 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
           </table>
         </div>
 
-        {/* 컬럼 매핑 팝업 — 선택 범위 위에 absolute로 */}
+        {/* 컬럼 매핑 팝업 — 선택 셀 오른쪽에 fixed로 */}
         {pendingAddr && popupStyle && (
           <div
-            className="absolute z-30 bg-white border border-gray-200 rounded-lg shadow-lg p-2.5 w-72"
+            className="z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2.5 w-72"
             style={popupStyle}
           >
             <div className="flex items-center gap-1 mb-2">

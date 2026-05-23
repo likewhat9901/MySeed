@@ -2,7 +2,7 @@
 'use client'
 
 import { useState, useRef } from 'react'
-import { Plus, Save, X, ChevronDown } from 'lucide-react'
+import { Plus, Save, X, ChevronDown, Upload } from 'lucide-react'
 import { CATEGORIES } from '@/constants/categories'
 import { RECORD_COLUMN_LABELS } from '@/features/ledger/record/types'
 import type { LedgerRecord, ReviewRating, RecordColumn, Currency } from '@/features/ledger/record/types'
@@ -18,6 +18,8 @@ interface RecordTableProps {
   savedFeedback:  boolean
   onSave:         () => void
   onSaveAs:       (name: string) => void
+  onImportClick?: () => void
+  importing?:     boolean
 }
 
 const CURRENCIES: Currency[] = ['KRW', 'USD', 'EUR', 'JPY', 'CNY']
@@ -48,6 +50,7 @@ function ReviewCell({ value, onChange }: { value: ReviewRating; onChange: (v: Re
 export default function RecordTable({
   records = [], selectedColumn, onChange, onColumnSelect,
   currentRecId, currentRecName, saving, savedFeedback, onSave, onSaveAs,
+  onImportClick, importing = false,
 }: RecordTableProps) {
   const [saveAsOpen, setSaveAsOpen] = useState(false)
   const [saveAsName, setSaveAsName] = useState('')
@@ -109,6 +112,16 @@ export default function RecordTable({
             <Plus className="size-3.5" />
             행 추가
           </button>
+          {onImportClick && (
+            <button
+              onClick={onImportClick}
+              disabled={importing}
+              className="flex items-center gap-1 text-xs text-gray-400 hover:text-brand transition-colors disabled:opacity-50"
+            >
+              <Upload className="size-3.5" />
+              {importing ? '업로드 중...' : '가져오기'}
+            </button>
+          )}
         </div>
 
         {records.length > 0 && (
