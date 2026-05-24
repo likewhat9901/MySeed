@@ -3,6 +3,7 @@ uvicorn
 python-dotenv>=1.0.0
 python-multipart>=0.0.9
 openpyxl>=3.1.0
+xlrd==1.2.0
 openai>=1.40.0
 supabase>=2.6.0
 pydantic>=2.0.0

@@ -46,17 +46,21 @@ def rpc_save_import_mapping(
     map_id: UUID,
     map_name: str,
     mappings: list[dict[str, Any]],
+    *,
+    led_id: UUID,
 ) -> str | None:
     payload = _mappings_legacy_keys(mappings)
+    body: dict[str, Any] = {
+        "p_mem_id": str(mem_id),
+        "p_map_id": str(map_id),
+        "p_map_name": map_name,
+        "p_mappings": payload,
+        "p_led_id": str(led_id),
+    }
     try:
         res = _client().rpc(
             "save_import_mapping",
-            {
-                "p_mem_id": str(mem_id),
-                "p_map_id": str(map_id),
-                "p_map_name": map_name,
-                "p_mappings": payload,
-            },
+            body,
         ).execute()
     except Exception:
         logger.exception("save_import_mapping RPC failed")
@@ -140,3 +144,34 @@ def rpc_replace_canvas_widgets(led_id: UUID, configs: list[dict[str, Any]]) -> b
     except Exception:
         logger.exception("replace_canvas_widgets RPC failed")
         return False
+
+
+def list_tb_cards() -> list[dict[str, Any]]:
+    """`tb_card` 목록(service role). column_list 순서는 [날짜, 가맹점, 금액] 헤더."""
+    res = (
+        _client()
+        .table("tb_card")
+        .select("card_id, card_name, column_list, regist_dt")
+        .order("card_name")
+        .execute()
+    )
+    return list(res.data or [])
+
+
+def fetch_tb_card(identifier: str) -> dict[str, Any] | None:
+    """
+    UUID 형식이면 card_id 로, 아니면 card_name 과 정확 일치로 1건 조회.
+    """
+    ident = identifier.strip()
+    if not ident:
+        return None
+    table = _client().table("tb_card")
+    try:
+        cid = UUID(ident)
+        by_id = table.select("*").eq("card_id", str(cid)).limit(1).execute()
+        if by_id.data:
+            return by_id.data[0]
+    except ValueError:
+        pass
+    by_name = table.select("*").eq("card_name", ident).limit(1).execute()
+    return by_name.data[0] if by_name.data else None

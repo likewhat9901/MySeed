@@ -60,7 +60,7 @@ class ImportMappingSuggestRequest(BaseModel):
     )
     led_id: UUID | None = Field(
         default=None,
-        description="가계부(ledger) ID. apply_canvas 시 필요.",
+        description="가계부(ledger) ID. persist_mapping 시 필수(save_import_mapping에 전달). apply_canvas 시에도 필요.",
     )
     persist_mapping: bool = Field(
         default=False,
@@ -265,6 +265,11 @@ async def suggest_import_mappings(
                     status_code=403,
                     detail="mem_id가 로그인한 사용자와 일치하지 않습니다",
                 )
+            if payload.led_id is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="persist_mapping=true일 때 led_id가 필요합니다",
+                )
             rows_for_db = [
                 {
                     "con_id": str(m.con_id),
@@ -280,6 +285,7 @@ async def suggest_import_mappings(
                     map_id=map_id,
                     map_name=payload.map_name,
                     mappings=rows_for_db,
+                    led_id=payload.led_id,
                 )
                 mapping_saved = saved_id is not None
                 if not mapping_saved:
@@ -702,12 +708,18 @@ async def analyze_excel_file(
                     status_code=403,
                     detail="mem_id가 로그인한 사용자와 일치하지 않습니다",
                 )
+            if led_uuid is None:
+                raise HTTPException(
+                    status_code=400,
+                    detail="persist_mapping=true일 때 led_id가 필요합니다",
+                )
             try:
                 saved_id = rpc_save_import_mapping(
                     mem_id=actor_uid,
                     map_id=map_id,
                     map_name=map_name,
                     mappings=mappings_for_db,
+                    led_id=led_uuid,
                 )
                 mapping_saved = saved_id is not None
                 if not mapping_saved:

@@ -27,13 +27,25 @@ class Settings:
     supabase_jwt_secret: str | None
     # 브라우저에서 API 호출 시 허용할 Origin. 쉼표 구분. 운영에서는 CORS_ORIGINS로 덮어쓰기.
     cors_origins: tuple[str, ...]
+    # Notion Public integration OAuth 데모 (로컬 테스트용)
+    notion_oauth_client_id: str | None
+    notion_oauth_client_secret: str | None
+    notion_oauth_redirect_uri: str | None
+    notion_oauth_frontend_result_url: str | None
 
     def supabase_configured(self) -> bool:
         return bool(self.supabase_url and self.supabase_service_role_key)
 
+    def notion_oauth_demo_configured(self) -> bool:
+        return bool(
+            self.notion_oauth_client_id
+            and self.notion_oauth_client_secret
+            and self.notion_oauth_redirect_uri
+        )
+
 
 _DEFAULT_CORS_ORIGINS = (
-    "http://localhost:3000,https://frontend-production-cab6.up.railway.app"
+    "http://localhost:3000,http://127.0.0.1:3000,https://frontend-production-cab6.up.railway.app"
 )
 
 
@@ -48,4 +60,11 @@ def get_settings() -> Settings:
         supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY") or None,
         supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET") or None,
         cors_origins=_parse_csv_list(os.getenv("CORS_ORIGINS"), _DEFAULT_CORS_ORIGINS),
+        notion_oauth_client_id=os.getenv("NOTION_OAUTH_CLIENT_ID") or None,
+        notion_oauth_client_secret=os.getenv("NOTION_OAUTH_CLIENT_SECRET") or None,
+        notion_oauth_redirect_uri=os.getenv("NOTION_OAUTH_REDIRECT_URI") or None,
+        notion_oauth_frontend_result_url=os.getenv(
+            "NOTION_OAUTH_FRONTEND_RESULT_URL"
+        )
+        or "http://localhost:3000/dev/notion-oauth/result",
     )

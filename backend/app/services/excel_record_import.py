@@ -13,6 +13,7 @@ from openpyxl import load_workbook
 
 MAX_IMPORT_ROWS = 5000
 
+
 # Logical roles → 헤더 셀에 적힌 문자열(column_map 값)
 RECORD_ROLES_DATE = "date"
 RECORD_ROLES_AMOUNT = "amount"
@@ -97,11 +98,94 @@ def _coerce_amount(v: Any) -> float | None:
     return None
 
 
+def column_index_from_header_label(headers: list[str], header_label: str | None) -> int | None:
+    """시트 헤더 문자열이 엑셀 `headers` 목록 중 어느 열인지 찾습니다 (다른 서비스에서 재사용)."""
+    return _resolve_col_index(headers, header_label)
+
+
+def coerce_numeric_amount(v: Any) -> float | None:
+    """엑셀·문자열을 금액(float)으로 정규화 (`build_record_rows`와 동일 규칙)."""
+    return _coerce_amount(v)
+
+
+def _looks_like_legacy_xls(content: bytes) -> bool:
+    """Excel 97-2003 바이너리(.xls) OLE 헤더."""
+    return len(content) >= 8 and content[:8] == b"\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1"
+
+
+def _read_sheet_tabular_xls(
+    content: bytes,
+    sheet_name: str | None,
+) -> tuple[str, int, list[str], list[list[Any]]]:
+    import xlrd
+    from xlrd import xldate_as_datetime as _xld_as_dt
+
+    wb = xlrd.open_workbook(file_contents=content, formatting_info=False)
+    names = wb.sheet_names()
+    if not names:
+        return "", 1, [], []
+
+    resolved: str | None = sheet_name.strip() if sheet_name and sheet_name.strip() else None
+    if resolved and resolved not in names:
+        return resolved, 1, [], []
+    if resolved:
+        sh = wb.sheet_by_name(resolved)
+    else:
+        sh = wb.sheet_by_index(0)
+        resolved = names[0]
+
+    all_rows: list[list[Any]] = []
+    row_limit = min(sh.nrows, MAX_IMPORT_ROWS)
+    n_cols = max((sh.row_len(rx) if rx < sh.nrows else 0 for rx in range(row_limit)), default=0)
+    n_cols = max(n_cols, sh.ncols)
+
+    for rowx in range(row_limit):
+        row_vals: list[Any] = []
+        for colx in range(n_cols):
+            if rowx >= sh.nrows or colx >= sh.row_len(rowx):
+                row_vals.append(None)
+                continue
+            ctype = sh.cell_type(rowx, colx)
+            val = sh.cell_value(rowx, colx)
+            if ctype == xlrd.XL_CELL_EMPTY:
+                row_vals.append(None)
+            elif ctype == xlrd.XL_CELL_DATE and val != "":
+                try:
+                    row_vals.append(_xld_as_dt(val, wb.datemode))
+                except Exception:
+                    row_vals.append(val)
+            elif ctype == xlrd.XL_CELL_NUMBER and val == int(val):
+                row_vals.append(int(val))
+            else:
+                row_vals.append(val)
+        all_rows.append(row_vals)
+
+    if not all_rows:
+        return resolved, 1, [], []
+
+    hdr_row_idx = _detect_header_row(all_rows)
+    headers_raw = all_rows[hdr_row_idx - 1] if hdr_row_idx - 1 < len(all_rows) else []
+    headers: list[str] = []
+    for i in range(n_cols):
+        h = headers_raw[i] if i < len(headers_raw) else None
+        headers.append(str(h).strip() if h not in (None, "") else f"column_{i + 1}")
+
+    data_rows = all_rows[hdr_row_idx:]
+    return resolved, hdr_row_idx, headers, data_rows
+
+
 def read_sheet_tabular(content: bytes, sheet_name: str | None = None) -> tuple[str, int, list[str], list[list[Any]]]:
     """
     Returns `(used_sheet_name, header_row_1based, headers as strings, raw data rows)`
     각 data row는 시트 행 하나(패딩 없음 가능).
+    `.xlsx` 는 openpyxl, `.xls`(레거시)는 xlrd 1.x.
     """
+    if _looks_like_legacy_xls(content):
+        try:
+            return _read_sheet_tabular_xls(content, sheet_name)
+        except Exception:
+            pass
+
     wb = load_workbook(io.BytesIO(content), data_only=True, read_only=True)
     try:
         names = wb.sheetnames
@@ -150,6 +234,7 @@ def build_record_rows(
     column_map: dict[str, str],
     file_id: UUID | None,
     skip_empty_amount: bool = True,
+    data_source: str = "excel_import",
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """
     `column_map` 키: date | amount | title | memo | category (값은 엑셀 헤더 텍스트).
@@ -202,7 +287,7 @@ def build_record_rows(
         data_obj: dict[str, Any] = {
             "date": dv,
             "amount": amt,
-            "source": "excel_import",
+            "source": (data_source or "excel_import").strip() or "excel_import",
             "sheet": sheet,
             "excel_row": excel_row_no,
         }
