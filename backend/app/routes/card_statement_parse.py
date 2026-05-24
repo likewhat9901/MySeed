@@ -1,4 +1,4 @@
-"""카드 명세(xlsx): DB `tb_card.column_list` 순서로 파싱 후 `tb_record` 적재 (단일 POST)."""
+"""카드/은행 명세: DB `tb_card` 헤더(날짜·가맹점·금액)·파일 열 이름 매칭 후 `tb_record` 적재."""
 
 from __future__ import annotations
 
@@ -67,16 +67,19 @@ def _card_meta(card_row: dict[str, Any]) -> dict[str, Any]:
     return {
         "card_id": card_row.get("card_id"),
         "card_name": card_row.get("card_name"),
-        "column_list": card_row.get("column_list"),
+        "header_date": card_row.get("header_date"),
+        "header_merchant": card_row.get("header_merchant"),
+        "header_amount": card_row.get("header_amount"),
     }
 
 
 @router.post(
     "/card-statement",
-    summary="카드 명세 xlsx → 파싱 및 tb_record 적재(단일 API)",
+    summary="카드/은행 명세 xlsx/xls → 파싱 및 tb_record 적재(단일 API)",
     description=(
-        "multipart: `file`(.xlsx 또는 .xls), `card_company`(card_name 또는 card_id UUID), `ledger_id`."
-        "`dry_run=true`면 DB에 넣지 않고 `rows`에 파싱 미리보기만 반환합니다."
+        "`tb_card`에 저장된 날짜·가맹점·금액 **헤더 문자열**(은행별)과 같은 열 이름을 파일에서 찾아 "
+        "`data.date`·`data.title`(가맹점)·`data.amount`로 적재합니다. "
+        "`dry_run=true`면 삽입 없이 `rows` 미리보기."
     ),
     response_model=CardStatementResponse,
 )

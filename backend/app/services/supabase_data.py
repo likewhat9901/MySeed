@@ -147,11 +147,13 @@ def rpc_replace_canvas_widgets(led_id: UUID, configs: list[dict[str, Any]]) -> b
 
 
 def list_tb_cards() -> list[dict[str, Any]]:
-    """`tb_card` 목록(service role). column_list 순서는 [날짜, 가맹점, 금액] 헤더."""
+    """`tb_card` 목록(service role): 은행별 날짜·가맹점·금액 열 헤더 문자열."""
     res = (
         _client()
         .table("tb_card")
-        .select("card_id, card_name, column_list, regist_dt")
+        .select(
+            "card_id, card_name, header_date, header_merchant, header_amount, regist_dt"
+        )
         .order("card_name")
         .execute()
     )
