@@ -151,9 +151,7 @@ def list_tb_cards() -> list[dict[str, Any]]:
     res = (
         _client()
         .table("tb_card")
-        .select(
-            "card_id, card_name, header_date, header_merchant, header_amount, regist_dt"
-        )
+        .select("card_id, card_name, column_list, regist_dt")
         .order("card_name")
         .execute()
     )

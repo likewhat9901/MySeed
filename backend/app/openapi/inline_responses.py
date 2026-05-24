@@ -209,35 +209,6 @@ IMPORT_MAPPING_ANALYZE_200_SCHEMA: dict[str, Any] = {
 }
 
 
-IMPORT_RECORDS_200_SCHEMA: dict[str, Any] = {
-    "type": "object",
-    "description": "응답 본문. 각 줄이 무슨 값인지 옆 설명 참고.",
-    "properties": {
-        "inserted": _i("가계부 거래 기록으로 새로 넣은 줄의 개수"),
-        "skipped_estimate": _i(
-            "엑셀에 있던 본문 줄 수 가운데, 넣지 않고 건너뛴 줄 수의 어림값(금액 빈칸·날짜 없음 등)"
-        ),
-        "ledger_id": _s(
-            "어느 가계부에 넣었는지 가리키는 번호(문자열)"
-        ),
-        "sheet": _s("실제로 읽어 들인 엑셀 시트 이름"),
-        "header_row": _i(
-            "맨 위 제목 줄로 인식한 줄 번호(엑셀에서 보는 행 번호, 1부터 시작)"
-        ),
-        "warnings": _arr(
-            "열 이름이 안 맞거나 날짜가 비어 넘겼다 같은 주의 사항 문장들",
-            _s("(문구 하나)"),
-        ),
-        "rec_ids_sample": _arr(
-            "새로 들어간 기록마다 붙는 내부 번호를, 앞쪽 일부만 목록으로 보여 준 것(최대 100개)",
-            _s("(기록 하나의 내부 번호 문자열)"),
-        ),
-        "dry_run": _b(
-            "맞는지 확인만 하고 실제로 DB에 넣지는 않았는지 여부"
-        ),
-    },
-}
-
 
 USERS_GET_200_SCHEMA: dict[str, Any] = {
     "type": "array",
@@ -281,12 +252,6 @@ RESPONSE_POST_IMPORT_MAPPING_SUGGEST = _resp_200(
 RESPONSE_POST_IMPORT_MAPPING_ANALYZE = _resp_200(
     IMPORT_MAPPING_ANALYZE_200_SCHEMA,
     "파일 분석·위젯별 추천 결과(아래 한국어 컬럼 설명 포함)",
-)
-
-
-RESPONSE_POST_IMPORT_RECORDS = _resp_200(
-    IMPORT_RECORDS_200_SCHEMA,
-    "엑셀에서 읽어 tb_record 적재 결과(아래 한국어 컬럼 설명 포함)",
 )
 
 
