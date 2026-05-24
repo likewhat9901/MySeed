@@ -95,7 +95,7 @@ async def notion_oauth_demo_status() -> dict[str, Any]:
     }
 
 
-@router.get("/start")
+@router.get("/start", response_model=None)
 async def notion_oauth_demo_start() -> RedirectResponse:
     """노션 동의 페이지로 리다이렉트합니다. 브라우저 주소창으로 접속해야 쿠키가 붙습니다."""
     s = get_settings()
@@ -137,7 +137,7 @@ async def notion_oauth_demo_start() -> RedirectResponse:
     return resp
 
 
-@router.get("/callback")
+@router.get("/callback", response_model=None)
 async def notion_oauth_demo_callback(
     code: str | None = None,
     state: str | None = None,
