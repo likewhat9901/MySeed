@@ -9,9 +9,6 @@ from typing import Any, TypedDict
 
 from app.services.excel_record_import import (
     MAX_IMPORT_ROWS,
-    RECORD_ROLES_AMOUNT,
-    RECORD_ROLES_DATE,
-    RECORD_ROLES_TITLE,
     coerce_numeric_amount,
     column_index_from_header_label,
     read_sheet_tabular,
@@ -88,16 +85,6 @@ def triple_role_headers(card_row: ImportCardRow | dict[str, Any]) -> tuple[str, 
         h_merchant or one(1),
         h_amount or one(2),
     )
-
-
-def import_card_to_column_map(card_row: ImportCardRow | dict[str, Any]) -> dict[str, str]:
-    """`build_record_rows`용 매핑. 가맹점은 RECORD_ROLES_TITLE → data.title."""
-    h_date, h_merchant, h_amount = triple_role_headers(card_row)
-    return {
-        RECORD_ROLES_DATE: h_date,
-        RECORD_ROLES_TITLE: h_merchant,
-        RECORD_ROLES_AMOUNT: h_amount,
-    }
 
 
 def _trim_str(v: Any) -> str:

@@ -309,3 +309,91 @@ def build_record_rows(
         out.append(row_sql)
 
     return out, warnings
+
+
+def build_tb_rows_card_statement(
+    *,
+    led_id: UUID,
+    data_type: str,
+    sheet: str,
+    header_row_1based: int,
+    headers: list[str],
+    data_rows: list[list[Any]],
+    header_date_label: str,
+    header_merchant_label: str,
+    header_amount_label: str,
+    file_id: UUID | None,
+    skip_empty_amount: bool = True,
+    data_source: str = "card_statement_import",
+) -> tuple[list[dict[str, Any]], list[str]]:
+    """
+    카드·은행 명세 전용: 시트 헤더에서 날짜·가맹점·금액 열만 찾아 tb_record 형태 행 생성.
+    DB `tb_card`의 세 헤더 문자열을 그대로 넘김(column_map 미사용).
+    """
+    warnings: list[str] = []
+
+    ix_date = _resolve_col_index(headers, header_date_label or None)
+    ix_mrch = _resolve_col_index(headers, header_merchant_label or None)
+    ix_amt = _resolve_col_index(headers, header_amount_label or None)
+
+    if not str(header_date_label or "").strip():
+        warnings.append("날짜 열 헤더 문자열이 비었습니다.")
+    if not str(header_merchant_label or "").strip():
+        warnings.append("가맹점 열 헤더 문자열이 비었습니다.")
+    if not str(header_amount_label or "").strip():
+        warnings.append("금액 열 헤더 문자열이 비었습니다.")
+
+    if ix_date is None and str(header_date_label or "").strip():
+        warnings.append(f"'{header_date_label}' 헤더를 시트에서 찾지 못했습니다.")
+    if ix_amt is None and str(header_amount_label or "").strip():
+        warnings.append(f"'{header_amount_label}' 헤더를 시트에서 찾지 못했습니다.")
+    if ix_mrch is None and str(header_merchant_label or "").strip():
+        warnings.append(f"'{header_merchant_label}' 헤더를 시트에서 찾지 못했습니다.")
+
+    if ix_date is None or ix_amt is None:
+        return [], warnings
+
+    out: list[dict[str, Any]] = []
+    for offset, raw in enumerate(data_rows):
+        excel_row_no = header_row_1based + 1 + offset
+        padded = raw + [None] * max(0, len(headers) - len(raw))
+
+        amt = _coerce_amount(_cell(padded, ix_amt))
+        if skip_empty_amount and amt is None:
+            continue
+        if amt is None and not skip_empty_amount:
+            amt = 0.0
+
+        dv = _jsonable_scalar(_cell(padded, ix_date))
+        if dv is None or dv == "":
+            mrch_probe = _jsonable_scalar(_cell(padded, ix_mrch))
+            amt_probe = _cell(padded, ix_amt)
+            if all(x in (None, "") for x in (mrch_probe, amt_probe)):
+                continue
+            warnings.append(f"행 {excel_row_no}: 날짜 없음 건너뜁니다.")
+            continue
+
+        tv = _jsonable_scalar(_cell(padded, ix_mrch))
+
+        data_obj: dict[str, Any] = {
+            "date": dv,
+            "amount": amt,
+            "source": (data_source or "card_statement_import").strip()
+            or "card_statement_import",
+            "sheet": sheet,
+            "excel_row": excel_row_no,
+        }
+        if tv:
+            data_obj["title"] = tv
+
+        row_sql: dict[str, Any] = {
+            "led_id": str(led_id),
+            "data_type": data_type,
+            "data": data_obj,
+        }
+        if file_id is not None:
+            row_sql["file_id"] = str(file_id)
+
+        out.append(row_sql)
+
+    return out, warnings

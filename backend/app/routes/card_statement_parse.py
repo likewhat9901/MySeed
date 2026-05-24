@@ -9,8 +9,8 @@ from fastapi import APIRouter, File, Form, HTTPException, UploadFile
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
-from app.services.card_statement_parse import import_card_to_column_map
-from app.services.excel_record_import import build_record_rows, read_sheet_tabular
+from app.services.card_statement_parse import triple_role_headers
+from app.services.excel_record_import import build_tb_rows_card_statement, read_sheet_tabular
 from app.services.supabase_data import fetch_tb_card, insert_tb_records
 
 router = APIRouter(tags=["card-statements"])
@@ -133,21 +133,23 @@ async def card_statement_import(
             detail=f"등록된 카드를 찾을 수 없습니다: {card_company!r}",
         )
 
-    cmap = import_card_to_column_map(card_row)
+    h_date, h_merch, h_amt = triple_role_headers(card_row)
     sheet_used, hdr_row, headers, data_rows = read_sheet_tabular(raw, None)
     if not sheet_used:
         raise HTTPException(status_code=400, detail="엑셀 시트를 읽을 수 없거나 시트가 없습니다")
     if not headers:
         raise HTTPException(status_code=400, detail="헤더를 찾지 못했습니다")
 
-    rows_to_insert, parse_warnings = build_record_rows(
+    rows_to_insert, parse_warnings = build_tb_rows_card_statement(
         led_id=led_uuid,
         data_type=data_type.strip() or "import",
         sheet=sheet_used,
         header_row_1based=hdr_row,
         headers=headers,
         data_rows=data_rows,
-        column_map=cmap,
+        header_date_label=h_date,
+        header_merchant_label=h_merch,
+        header_amount_label=h_amt,
         file_id=file_uuid,
         skip_empty_amount=skip_empty_amount,
         data_source="card_statement_import",
