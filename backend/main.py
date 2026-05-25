@@ -7,6 +7,7 @@ from app.routes.bs_import import router as bs_import_router
 from app.routes.card_import import router as card_import_router
 from app.routes.import_mapping import router as import_mapping_router
 from app.routes.notion_oauth_demo import router as notion_oauth_demo_router
+from app.routes.statistics import router as statistics_router
 from app.routes.users import router as users_router
 
 app = FastAPI(
@@ -35,4 +36,5 @@ app.include_router(users_router, prefix="/api")
 app.include_router(bs_import_router, prefix="/api")
 app.include_router(card_import_router, prefix="/api")
 app.include_router(import_mapping_router, prefix="/api")
+app.include_router(statistics_router, prefix="/api")
 app.include_router(notion_oauth_demo_router, prefix="/api")

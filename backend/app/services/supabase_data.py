@@ -106,6 +106,34 @@ def ledger_belongs_to_member(led_id: UUID, mem_id: UUID) -> bool:
     return bool(data)
 
 
+def fetch_tb_record_rows_for_ledger(led_id: UUID, *, chunk_size: int = 500) -> list[dict[str, Any]]:
+    """
+    특정 ledger의 tb_record 목록 조회(service role).
+
+    각 행: `data`, `cate_id` 등. PostgREST row 상한 때문에 range 로 순회합니다.
+    """
+    client = _client()
+    out: list[dict[str, Any]] = []
+    offset = 0
+    while True:
+        res = (
+            client.table("tb_record")
+            .select("data,cate_id")
+            .eq("led_id", str(led_id))
+            .order("rec_id", desc=False)
+            .range(offset, offset + chunk_size - 1)
+            .execute()
+        )
+        batch = list(res.data or [])
+        if not batch:
+            break
+        out.extend(batch)
+        if len(batch) < chunk_size:
+            break
+        offset += chunk_size
+    return out
+
+
 def insert_tb_records(rows: list[dict[str, Any]], *, chunk_size: int = 250) -> list[str]:
     """
     `tb_record` bulk insert (service role). Large payloads are chunked.

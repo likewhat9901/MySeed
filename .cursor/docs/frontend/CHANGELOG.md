@@ -11,7 +11,11 @@
 
 - **가계부 엑셀 적재 API**: `POST /api/bsimport` — 시트 `가계부 내역`(없으면 두 번째 시트), 열 매핑 → `tb_record`
 
+- **`GET /api/statistics`**: `led_id`·`category`(반복 시 OR)·`method`(합·평균) — JWT·`tb_record.data.amount` 집계(UUID는 `cate_id`, 문자열은 `data.category`)
+
 ### Changed
+
+- **통계 `/api/statistics`**: `category` 쿼리 반복 시 OR로 합산, 응답 필드 `category` → `categories`(trim 목록)
 
 - **가계부 적재 `data`**: `sheet` 키 제외
 
