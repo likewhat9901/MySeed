@@ -13,6 +13,8 @@
 
 ### Changed
 
+- **가계부 적재 `data`**: `sheet` 키 제외
+
 - **카드 명세 API 단순화(백엔드 참고)**: `POST /api/card/import`(파일+card_name+ledger_id)·`tb_card.column_list` 3종 매칭 → `data.date`·`title`·`amount`만 삽입·`/card-statement`·`/import/records`·구 `card_statement_parse` 서비스 제거
 
 ### Fixed

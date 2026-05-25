@@ -94,7 +94,7 @@ def build_tb_rows_from_bs_household_excel(
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """
     헤더: 날짜, 시간, 타입, 대분류, 내용, 금액, 화폐, 결제수단, 메모
-    `data` JSON: date, amount, sheet, excel_row, source=bsimport 및 매핑된 선택 필드.
+    `data` JSON: date, amount, excel_row, source=bsimport 및 매핑된 선택 필드.
     """
     warnings: list[str] = []
     sheet, header_row_1based, headers, data_rows = read_household_book_tabular(excel_bytes)
@@ -172,7 +172,6 @@ def build_tb_rows_from_bs_household_excel(
             "date": dv,
             "amount": amt,
             "source": "bsimport",
-            "sheet": sheet,
             "excel_row": excel_row_no,
         }
 
