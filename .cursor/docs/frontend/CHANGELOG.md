@@ -23,6 +23,8 @@
 
 ### Fixed
 
+- **통계 라우트 배포**: 함수 인자 순서·`category`에 `Query(default_factory=list)` 할당해 파이썬 `SyntaxError`(기본값 있는 뒤 무기본 인자) 해소
+
 - **카드 명세 적재**: `data.date`는 파싱·검증·행 건너뛰기 없이 해당 열 셀을 문자열로만 저장 (`NFKC` 등 헤더 매칭·금액 열 처리는 동일)·`tb_record` insert 반환 불일치 시 경고 로그·422 시 경고 문자열 묶음
 
 ---

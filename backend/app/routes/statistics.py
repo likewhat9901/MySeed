@@ -58,17 +58,14 @@ class LedgerStatisticsResponse(BaseModel):
 )
 async def get_ledger_statistics(
     led_id: UUID = Query(..., description="tb_ledger.led_id"),
-    category: Annotated[
-        list[str],
-        Query(
-            default_factory=list,
-            description="같은 키를 반복 가능. 여러 값 중 하나라도 맞으면 포함해 합·평균합니다.",
-        ),
-    ],
     method: str = Query(
         ...,
         description="합: sum 또는 합 등. 평균: avg 또는 평균 등",
         examples=["sum", "avg"],
+    ),
+    category: list[str] = Query(
+        default_factory=list,
+        description="같은 키를 반복 가능. 여러 값 중 하나라도 맞으면 포함해 합·평균합니다.",
     ),
     authorization: Annotated[
         str | None,
