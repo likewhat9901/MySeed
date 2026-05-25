@@ -3,6 +3,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import RedirectResponse
 
 from app.core.config import get_settings
+from app.routes.bs_import import router as bs_import_router
 from app.routes.card_import import router as card_import_router
 from app.routes.import_mapping import router as import_mapping_router
 from app.routes.notion_oauth_demo import router as notion_oauth_demo_router
@@ -31,6 +32,7 @@ async def redirect_to_docs() -> RedirectResponse:
     return RedirectResponse(url="/docs")
 
 app.include_router(users_router, prefix="/api")
+app.include_router(bs_import_router, prefix="/api")
 app.include_router(card_import_router, prefix="/api")
 app.include_router(import_mapping_router, prefix="/api")
 app.include_router(notion_oauth_demo_router, prefix="/api")

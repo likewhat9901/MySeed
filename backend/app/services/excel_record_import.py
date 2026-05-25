@@ -131,6 +131,7 @@ def _looks_like_legacy_xls(content: bytes) -> bool:
 def _read_sheet_tabular_xls(
     content: bytes,
     sheet_name: str | None,
+    sheet_index_0based: int | None = None,
 ) -> tuple[str, int, list[str], list[list[Any]]]:
     import xlrd
     from xlrd import xldate_as_datetime as _xld_as_dt
@@ -145,6 +146,11 @@ def _read_sheet_tabular_xls(
         return resolved, 1, [], []
     if resolved:
         sh = wb.sheet_by_name(resolved)
+    elif sheet_index_0based is not None:
+        if sheet_index_0based < 0 or sheet_index_0based >= len(names):
+            return "", 1, [], []
+        resolved = names[sheet_index_0based]
+        sh = wb.sheet_by_index(sheet_index_0based)
     else:
         sh = wb.sheet_by_index(0)
         resolved = names[0]
@@ -189,15 +195,24 @@ def _read_sheet_tabular_xls(
     return resolved, hdr_row_idx, headers, data_rows
 
 
-def read_sheet_tabular(content: bytes, sheet_name: str | None = None) -> tuple[str, int, list[str], list[list[Any]]]:
+def read_sheet_tabular(
+    content: bytes,
+    sheet_name: str | None = None,
+    *,
+    sheet_index_0based: int | None = None,
+) -> tuple[str, int, list[str], list[list[Any]]]:
     """
     Returns `(used_sheet_name, header_row_1based, headers as strings, raw data rows)`
     각 data row는 시트 행 하나(패딩 없음 가능).
     `.xlsx` 는 openpyxl, `.xls`(레거시)는 xlrd 1.x.
+
+    `sheet_name`이 지정되어 있으면 해당 이름을 우선 사용합니다 (없으면 빈 헤더로 실패 결과).
+    그렇지 않고 `sheet_index_0based`가 있으면 그 인덱스의 시트를 씁니다.
+    둘 다 비어 있으면 첫 시트입니다.
     """
     if _looks_like_legacy_xls(content):
         try:
-            return _read_sheet_tabular_xls(content, sheet_name)
+            return _read_sheet_tabular_xls(content, sheet_name, sheet_index_0based)
         except Exception:
             pass
 
@@ -211,6 +226,11 @@ def read_sheet_tabular(content: bytes, sheet_name: str | None = None) -> tuple[s
             ws = wb[resolved] if resolved in names else None
             if ws is None:
                 return resolved, 1, [], []
+        elif sheet_index_0based is not None:
+            if sheet_index_0based < 0 or sheet_index_0based >= len(names):
+                return "", 1, [], []
+            resolved = names[sheet_index_0based]
+            ws = wb[resolved]
         else:
             ws = wb[names[0]]
             resolved = names[0]

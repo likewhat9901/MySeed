@@ -7,6 +7,10 @@
 
 ## [2026-05-25]
 
+### Added
+
+- **가계부 엑셀 적재 API**: `POST /api/bsimport` — 시트 `가계부 내역`(없으면 두 번째 시트), 열 매핑 → `tb_record`
+
 ### Changed
 
 - **카드 명세 API 단순화(백엔드 참고)**: `POST /api/card/import`(파일+card_name+ledger_id)·`tb_card.column_list` 3종 매칭 → `data.date`·`title`·`amount`만 삽입·`/card-statement`·`/import/records`·구 `card_statement_parse` 서비스 제거
