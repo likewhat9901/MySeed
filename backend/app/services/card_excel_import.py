@@ -265,18 +265,27 @@ def build_tb_rows_from_card_excel(
         if amt is None:
             continue
 
+        raw_dc = _cell(padded, ix_date)
         date_iso = _parse_date_iso(
-            _cell(padded, ix_date),
+            raw_dc,
             reference_iso=ref_calendar,
         )
         if date_iso is None:
             warnings.append(f"행 {excel_row_no}: 날짜 파싱 실패 — 건너뜀.")
             continue
 
+        # jsonb 에는 문자열만 저장 (파이썬 date/datetime 객체·JSON 전용 타입 불사용)
+        if isinstance(raw_dc, str):
+            date_stored = _trim(raw_dc)
+        elif raw_dc in (None, ""):
+            date_stored = str(date_iso)
+        else:
+            date_stored = str(date_iso)
+
         merchant = _trim(_cell(padded, ix_merchant)) if ix_merchant is not None else ""
 
         data_obj: dict[str, Any] = {
-            "date": date_iso,
+            "date": date_stored,
             "amount": amt,
             "sheet": sheet,
             "excel_row": excel_row_no,
