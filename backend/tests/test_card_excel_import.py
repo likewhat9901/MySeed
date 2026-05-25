@@ -7,6 +7,13 @@ from uuid import uuid4
 from app.services import card_excel_import as cei
 
 
+def test_parse_date_iso_dot_and_korean() -> None:
+    assert cei._parse_date_iso("2026.5.26") == "2026-05-26"
+    assert cei._parse_date_iso("2026년 05월 26일") == "2026-05-26"
+    assert cei._parse_date_iso("26.03.01") == "2026-03-01"
+    assert cei._parse_date_iso("2026-03-7 14:30:00") == "2026-03-07"
+
+
 def test_build_tb_rows_from_card_basic(monkeypatch) -> None:
     led = uuid4()
     card_row = {"column_list": ["이용일", "가맹점명", "이용금액"]}
@@ -26,13 +33,13 @@ def test_build_tb_rows_from_card_basic(monkeypatch) -> None:
         led_id=led,
         card_row=card_row,
         excel_bytes=b"dummy",
-        data_type="expense",
     )
 
     assert not warns
     assert len(rows) == 1
     assert rows[0]["led_id"] == str(led)
-    assert rows[0]["data_type"] == "expense"
+    assert rows[0]["data_type"] == "import"
+    assert rows[0]["rec_name"] == "테스트가맹"
     d = rows[0]["data"]
     assert d["date"] == "2026-03-01"
     assert d["title"] == "테스트가맹"

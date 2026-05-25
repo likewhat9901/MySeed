@@ -72,7 +72,10 @@ async def import_card_statement(
     )
 
     if not rows_sql:
-        msg = warns[-1] if warns else "삽입할 행 없음."
+        tail = warns[-10:] if len(warns) > 10 else warns
+        msg = "유효한 행이 없습니다."
+        if tail:
+            msg += " " + " | ".join(tail)
         raise HTTPException(status_code=422, detail=msg)
 
     try:

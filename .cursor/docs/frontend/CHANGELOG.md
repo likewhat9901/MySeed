@@ -11,6 +11,10 @@
 
 - **카드 명세 API 단순화(백엔드 참고)**: `POST /api/card/import`(파일+card_name+ledger_id)·`tb_card.column_list` 3종 매칭 → `data.date`·`title`·`amount`만 삽입·`/card-statement`·`/import/records`·구 `card_statement_parse` 서비스 제거
 
+### Fixed
+
+- **카드 명세 적재**: 엑셀 헤더 정규화(`NFKC` 등)·점/한글 날짜 파싱·`rec_name`·`tb_record` insert 불일치 경고 로그·422 안내 문자열 요약
+
 ---
 
 ## [2026-05-10]

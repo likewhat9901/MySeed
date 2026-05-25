@@ -122,6 +122,13 @@ def insert_tb_records(rows: list[dict[str, Any]], *, chunk_size: int = 250) -> l
             batch = rows[i : i + chunk_size]
             res = client.table("tb_record").insert(batch).select("rec_id").execute()
             data = res.data
+            # PostgREST는 보통 RETURNING 과 동일한 개수를 돌려주지만, 환경에 따라 빈 배열일 수 있음.
+            if isinstance(data, list) and len(batch) != len(data):
+                logger.warning(
+                    "tb_record insert 행수 불일치: 전송=%s 응답=%s — 삽입은 됐을 수 있습니다.",
+                    len(batch),
+                    len(data),
+                )
             if isinstance(data, list):
                 for r in data:
                     if isinstance(r, dict) and r.get("rec_id"):

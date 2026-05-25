@@ -5,6 +5,7 @@ from __future__ import annotations
 import io
 import math
 import re
+import unicodedata
 from decimal import Decimal, InvalidOperation
 from typing import Any
 from uuid import UUID
@@ -26,6 +27,15 @@ def _norm_header(v: Any) -> str:
     return str(v).strip() if v not in (None, "") else ""
 
 
+def _norm_header_key(v: Any) -> str:
+    """시트 헤더·설정 문자열 매칭용(공백·유니코드 정규화)."""
+    s = _norm_header(v)
+    if not s:
+        return ""
+    s = unicodedata.normalize("NFKC", s).replace("\u00a0", " ").replace("\u3000", " ")
+    return " ".join(s.split()).strip().lower()
+
+
 def _detect_header_row(all_rows: list[list[Any]]) -> int:
     for i, row in enumerate(all_rows[:5]):
         non_null = [v for v in row if v not in (None, "")]
@@ -39,11 +49,16 @@ def _detect_header_row(all_rows: list[list[Any]]) -> int:
 def _resolve_col_index(headers: list[str], label: str | None) -> int | None:
     if label is None or not str(label).strip():
         return None
-    want = _norm_header(label)
-    low = want.lower()
+    want_k = _norm_header_key(label)
+    if not want_k:
+        return None
+    want_line = want_k.split("\n")[0].strip()
     for i, h in enumerate(headers):
-        hn = _norm_header(h)
-        if hn == want or hn.lower() == low:
+        hn_k = _norm_header_key(h)
+        if not hn_k:
+            continue
+        hn_line = hn_k.split("\n")[0].strip()
+        if hn_k == want_k or hn_line == want_line:
             return i
     return None
 

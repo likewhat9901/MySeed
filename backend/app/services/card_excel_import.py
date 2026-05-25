@@ -25,6 +25,57 @@ _DATE_FORMATS = (
 )
 
 
+def _expand_two_digit_year(y: int) -> int:
+    if 0 <= y <= 99:
+        return 2000 + y if y < 70 else 1900 + y
+    return y
+
+
+def _coerce_ymd(y: int, mo: int, d: int) -> str | None:
+    try:
+        if y < 100:
+            y = _expand_two_digit_year(y)
+        return date(y, mo, d).isoformat()
+    except ValueError:
+        return None
+
+
+def _parse_korean_ymd(s: str) -> str | None:
+    m = re.search(r"(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일", s)
+    if not m:
+        return None
+    return _coerce_ymd(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+
+
+def _parse_delimited_numbers(cand: str) -> str | None:
+    """`2026.3.5` / `2026-03-5` / `15-03-2026` 등 (월·일 자릿수 불필요)."""
+    head = cand.split()[0] if cand else ""
+    head = re.sub(r"\([^)]*\)", "", head).strip()
+    bits = re.split(r"[-/.]", head)
+    if len(bits) != 3:
+        return None
+    try:
+        xs = [int(b.strip()) for b in bits if b.strip().isdigit()]
+    except ValueError:
+        return None
+    if len(xs) != 3:
+        return None
+    a, b, c = xs
+    if a >= 1900:
+        return _coerce_ymd(a, b, c)
+    if c >= 1900:
+        if a > 12:
+            return _coerce_ymd(c, b, a)
+        if b > 12:
+            return _coerce_ymd(c, a, b)
+        return _coerce_ymd(c, a, b)
+    if a < 100 and 1 <= b <= 12 and 1 <= c <= 31:
+        return _coerce_ymd(_expand_two_digit_year(a), b, c)
+    if c < 100 and 1 <= a <= 12 and 1 <= b <= 31:
+        return _coerce_ymd(_expand_two_digit_year(c), a, b)
+    return None
+
+
 def _parse_column_list(raw: Any) -> list[Any]:
     if raw is None:
         return []
@@ -62,11 +113,19 @@ def _parse_date_iso(v: Any) -> str | None:
     s = _trim(v)
     if not s or s.lower() == "nan":
         return None
+
+    ko = _parse_korean_ymd(s)
+    if ko:
+        return ko
+
     candidates = [s]
     if " " in s:
         candidates.append(s.split()[0])
 
     for cand in candidates:
+        dl = _parse_delimited_numbers(cand)
+        if dl:
+            return dl
         norm = cand.replace("/", "-").replace(".", "-").strip()
         for fmt in _DATE_FORMATS:
             try:
@@ -93,7 +152,7 @@ def build_tb_rows_from_card_excel(
     led_id: UUID,
     card_row: dict[str, Any],
     excel_bytes: bytes,
-    data_type: str = "expense",
+    data_type: str = "import",
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """
     1) `card_row["column_list"]` → [날짜 헤더, 가맹점 헤더, 금액 헤더] 문자열
@@ -168,10 +227,15 @@ def build_tb_rows_from_card_excel(
         if merchant:
             data_obj["title"] = merchant
 
+        rec_name = (merchant.strip()[:400] if merchant else "") or (
+            str(date_iso)[:80] if date_iso else ""
+        )
+
         out.append(
             {
                 "led_id": str(led_id),
-                "data_type": (data_type or "expense").strip() or "expense",
+                "data_type": (data_type or "import").strip() or "import",
+                "rec_name": rec_name or None,
                 "data": data_obj,
             }
         )
