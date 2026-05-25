@@ -14,6 +14,11 @@ def test_parse_date_iso_dot_and_korean() -> None:
     assert cei._parse_date_iso("2026-03-7 14:30:00") == "2026-03-07"
 
 
+def test_parse_statement_mmdd_needs_reference_row() -> None:
+    assert cei._parse_date_iso("05.05 18:05:01", reference_iso="2026-06-01") == "2026-05-05"
+    assert cei._parse_date_iso("05.05 18:05:01") is None
+
+
 def test_build_tb_rows_from_card_basic(monkeypatch) -> None:
     led = uuid4()
     card_row = {"column_list": ["이용일", "가맹점명", "이용금액"]}

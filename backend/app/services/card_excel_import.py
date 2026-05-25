@@ -93,7 +93,55 @@ def _trim(v: Any) -> str:
     return str(v).strip()
 
 
-def _parse_date_iso(v: Any) -> str | None:
+def _extract_reference_calendar_from_row(cells: list[Any]) -> str | None:
+    """같은 행의 `yyyy.mm.dd` 형 전체 일자 하나(청구·결제예정 등) — 이용일 월일에 연 붙일 때 참고."""
+
+    ym_d = re.compile(r"(20\d{2})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})\b")
+    picked: date | None = None
+
+    for c in cells:
+        if c is None or c == "":
+            continue
+        s = _trim(str(c))
+        if not s:
+            continue
+        for m in ym_d.finditer(s):
+            try:
+                dt = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
+            except ValueError:
+                continue
+            if picked is None or dt >= picked:
+                picked = dt
+    return picked.isoformat() if picked else None
+
+
+def _compose_mm_dd_with_reference(day_cell: Any, reference_iso: str | None) -> str | None:
+    """`05.07 18:18:04` — 연도 없음. 같은 행의 `reference_iso`(예: 청구 2026-06-01)로 년 처리."""
+
+    if not reference_iso:
+        return None
+    ref_d = date.fromisoformat(reference_iso)
+    ry, ref_m = ref_d.year, ref_d.month
+
+    s = _trim(day_cell)
+    if not s:
+        return None
+    head = s.split()[0] if " " in s else s
+    head = re.sub(r"\(.*?\)", "", head).strip()
+
+    mm = re.match(r"^\s*(\d{1,2})\s*[./-]\s*(\d{1,2})\b", head)
+    if not mm:
+        return None
+    tm, td = int(mm.group(1)), int(mm.group(2))
+
+    yy = ry
+    if tm >= 11 and ref_m <= 3:
+        yy = ry - 1
+
+    return _coerce_ymd(yy, tm, td)
+
+
+def _parse_date_iso(v: Any, *, reference_iso: str | None = None) -> str | None:
     """열 값 하나를 `YYYY-MM-DD` 문자열로."""
     if v is None or v == "":
         return None
@@ -138,6 +186,10 @@ def _parse_date_iso(v: Any) -> str | None:
             return datetime.strptime(compact, "%Y%m%d").date().isoformat()
         except ValueError:
             pass
+    if reference_iso:
+        cfb = _compose_mm_dd_with_reference(v, reference_iso)
+        if cfb:
+            return cfb
     return None
 
 
@@ -207,11 +259,16 @@ def build_tb_rows_from_card_excel(
         excel_row_no = header_row_1based + 1 + offset
         padded = list(raw) + [None] * max(0, n_hdr - len(raw))
 
+        ref_calendar = _extract_reference_calendar_from_row(padded)
+
         amt = coerce_numeric_amount(_cell(padded, ix_amount))
         if amt is None:
             continue
 
-        date_iso = _parse_date_iso(_cell(padded, ix_date))
+        date_iso = _parse_date_iso(
+            _cell(padded, ix_date),
+            reference_iso=ref_calendar,
+        )
         if date_iso is None:
             warnings.append(f"행 {excel_row_no}: 날짜 파싱 실패 — 건너뜀.")
             continue
