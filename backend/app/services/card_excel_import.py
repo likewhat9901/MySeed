@@ -1,10 +1,9 @@
-"""카드사 명세: `tb_card.column_list`(순서 [날짜, 가맹점, 금액] 헤더)로 열만 찾아 tb_record 형태 행 생성."""
+"""카드사 명세: `tb_card.column_list`(순서 [날짜 열, 가맹점 열, 금액 열])로 맞춰 인덱스만 탐색, 값은 문자열로 그대로 적재."""
 
 from __future__ import annotations
 
 import json
-import re
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 from typing import Any
 from uuid import UUID
 
@@ -14,66 +13,6 @@ from app.services.excel_record_import import (
     column_index_from_header_label,
     read_sheet_tabular,
 )
-
-
-_DATE_FORMATS = (
-    "%Y-%m-%d %H:%M:%S",
-    "%Y-%m-%d %H:%M",
-    "%Y-%m-%d",
-    "%d-%m-%Y",
-    "%m-%d-%Y",
-)
-
-
-def _expand_two_digit_year(y: int) -> int:
-    if 0 <= y <= 99:
-        return 2000 + y if y < 70 else 1900 + y
-    return y
-
-
-def _coerce_ymd(y: int, mo: int, d: int) -> str | None:
-    try:
-        if y < 100:
-            y = _expand_two_digit_year(y)
-        return date(y, mo, d).isoformat()
-    except ValueError:
-        return None
-
-
-def _parse_korean_ymd(s: str) -> str | None:
-    m = re.search(r"(\d{4})\s*년\s*(\d{1,2})\s*월\s*(\d{1,2})\s*일", s)
-    if not m:
-        return None
-    return _coerce_ymd(int(m.group(1)), int(m.group(2)), int(m.group(3)))
-
-
-def _parse_delimited_numbers(cand: str) -> str | None:
-    """`2026.3.5` / `2026-03-5` / `15-03-2026` 등 (월·일 자릿수 불필요)."""
-    head = cand.split()[0] if cand else ""
-    head = re.sub(r"\([^)]*\)", "", head).strip()
-    bits = re.split(r"[-/.]", head)
-    if len(bits) != 3:
-        return None
-    try:
-        xs = [int(b.strip()) for b in bits if b.strip().isdigit()]
-    except ValueError:
-        return None
-    if len(xs) != 3:
-        return None
-    a, b, c = xs
-    if a >= 1900:
-        return _coerce_ymd(a, b, c)
-    if c >= 1900:
-        if a > 12:
-            return _coerce_ymd(c, b, a)
-        if b > 12:
-            return _coerce_ymd(c, a, b)
-        return _coerce_ymd(c, a, b)
-    if a < 100 and 1 <= b <= 12 and 1 <= c <= 31:
-        return _coerce_ymd(_expand_two_digit_year(a), b, c)
-    if c < 100 and 1 <= a <= 12 and 1 <= b <= 31:
-        return _coerce_ymd(_expand_two_digit_year(c), a, b)
-    return None
 
 
 def _parse_column_list(raw: Any) -> list[Any]:
@@ -93,104 +32,16 @@ def _trim(v: Any) -> str:
     return str(v).strip()
 
 
-def _extract_reference_calendar_from_row(cells: list[Any]) -> str | None:
-    """같은 행의 `yyyy.mm.dd` 형 전체 일자 하나(청구·결제예정 등) — 이용일 월일에 연 붙일 때 참고."""
-
-    ym_d = re.compile(r"(20\d{2})\s*[.\-/]\s*(\d{1,2})\s*[.\-/]\s*(\d{1,2})\b")
-    picked: date | None = None
-
-    for c in cells:
-        if c is None or c == "":
-            continue
-        s = _trim(str(c))
-        if not s:
-            continue
-        for m in ym_d.finditer(s):
-            try:
-                dt = date(int(m.group(1)), int(m.group(2)), int(m.group(3)))
-            except ValueError:
-                continue
-            if picked is None or dt >= picked:
-                picked = dt
-    return picked.isoformat() if picked else None
-
-
-def _compose_mm_dd_with_reference(day_cell: Any, reference_iso: str | None) -> str | None:
-    """`05.07 18:18:04` — 연도 없음. 같은 행의 `reference_iso`(예: 청구 2026-06-01)로 년 처리."""
-
-    if not reference_iso:
-        return None
-    ref_d = date.fromisoformat(reference_iso)
-    ry, ref_m = ref_d.year, ref_d.month
-
-    s = _trim(day_cell)
-    if not s:
-        return None
-    head = s.split()[0] if " " in s else s
-    head = re.sub(r"\(.*?\)", "", head).strip()
-
-    mm = re.match(r"^\s*(\d{1,2})\s*[./-]\s*(\d{1,2})\b", head)
-    if not mm:
-        return None
-    tm, td = int(mm.group(1)), int(mm.group(2))
-
-    yy = ry
-    if tm >= 11 and ref_m <= 3:
-        yy = ry - 1
-
-    return _coerce_ymd(yy, tm, td)
-
-
-def _parse_date_iso(v: Any, *, reference_iso: str | None = None) -> str | None:
-    """열 값 하나를 `YYYY-MM-DD` 문자열로."""
+def _excel_cell_display(v: Any) -> str:
+    """jsonb 문자열 적재만: 검증·정규 날짜 파싱 없음. 타입별로 읽히는 문자열만 정리."""
     if v is None or v == "":
-        return None
+        return ""
     if isinstance(v, datetime):
-        return v.date().isoformat()
+        return v.isoformat(timespec="seconds")
     if isinstance(v, date):
         return v.isoformat()
-    if isinstance(v, (int, float)) and not isinstance(v, bool):
-        try:
-            sn = float(v)
-            if 200 < sn < 100_000:
-                origin = datetime(1899, 12, 30)
-                return (origin + timedelta(days=sn)).date().isoformat()
-        except (ValueError, OSError, OverflowError, TypeError):
-            pass
-
-    s = _trim(v)
-    if not s or s.lower() == "nan":
-        return None
-
-    ko = _parse_korean_ymd(s)
-    if ko:
-        return ko
-
-    candidates = [s]
-    if " " in s:
-        candidates.append(s.split()[0])
-
-    for cand in candidates:
-        dl = _parse_delimited_numbers(cand)
-        if dl:
-            return dl
-        norm = cand.replace("/", "-").replace(".", "-").strip()
-        for fmt in _DATE_FORMATS:
-            try:
-                return datetime.strptime(norm, fmt).date().isoformat()
-            except ValueError:
-                continue
-    compact = re.sub(r"[^\d]", "", s)
-    if len(compact) == 8:
-        try:
-            return datetime.strptime(compact, "%Y%m%d").date().isoformat()
-        except ValueError:
-            pass
-    if reference_iso:
-        cfb = _compose_mm_dd_with_reference(v, reference_iso)
-        if cfb:
-            return cfb
-    return None
+    s = _trim(str(v))
+    return "" if s.lower() == "nan" else s
 
 
 def _cell(row: list[Any], idx: int | None) -> Any:
@@ -208,8 +59,9 @@ def build_tb_rows_from_card_excel(
 ) -> tuple[list[dict[str, Any]], list[str]]:
     """
     1) `card_row["column_list"]` → [날짜 헤더, 가맹점 헤더, 금액 헤더] 문자열
-    2) 엑셀 첫 시트에서 동일한 헤더명 열 인덱스 탐색
-    3) 각 데이터 행: 첫 열→날짜, 둘째→가맹점(`data.title`), 셋째→금액(`data.amount`)
+    2) 시트 헤더로 열 인덱스 탐색
+    3) 각 행 `data.date` ← 날짜 열 문자열(파싱·스킵 없음), `data.title`/`amount` 채움
+    금액이 비거나 숫로 못 채워지면 그 행만 생략.
     """
     warnings: list[str] = []
     cols = _parse_column_list(card_row.get("column_list"))
@@ -259,29 +111,11 @@ def build_tb_rows_from_card_excel(
         excel_row_no = header_row_1based + 1 + offset
         padded = list(raw) + [None] * max(0, n_hdr - len(raw))
 
-        ref_calendar = _extract_reference_calendar_from_row(padded)
-
         amt = coerce_numeric_amount(_cell(padded, ix_amount))
         if amt is None:
             continue
 
-        raw_dc = _cell(padded, ix_date)
-        date_iso = _parse_date_iso(
-            raw_dc,
-            reference_iso=ref_calendar,
-        )
-        if date_iso is None:
-            warnings.append(f"행 {excel_row_no}: 날짜 파싱 실패 — 건너뜀.")
-            continue
-
-        # jsonb 에는 문자열만 저장 (파이썬 date/datetime 객체·JSON 전용 타입 불사용)
-        if isinstance(raw_dc, str):
-            date_stored = _trim(raw_dc)
-        elif raw_dc in (None, ""):
-            date_stored = str(date_iso)
-        else:
-            date_stored = str(date_iso)
-
+        date_stored = _excel_cell_display(_cell(padded, ix_date))
         merchant = _trim(_cell(padded, ix_merchant)) if ix_merchant is not None else ""
 
         data_obj: dict[str, Any] = {
@@ -294,7 +128,7 @@ def build_tb_rows_from_card_excel(
             data_obj["title"] = merchant
 
         rec_name = (merchant.strip()[:400] if merchant else "") or (
-            str(date_iso)[:80] if date_iso else ""
+            date_stored[:80] if date_stored else ""
         )
 
         out.append(

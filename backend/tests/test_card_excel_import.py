@@ -7,16 +7,36 @@ from uuid import uuid4
 from app.services import card_excel_import as cei
 
 
-def test_parse_date_iso_dot_and_korean() -> None:
-    assert cei._parse_date_iso("2026.5.26") == "2026-05-26"
-    assert cei._parse_date_iso("2026년 05월 26일") == "2026-05-26"
-    assert cei._parse_date_iso("26.03.01") == "2026-03-01"
-    assert cei._parse_date_iso("2026-03-7 14:30:00") == "2026-03-07"
+def test_excel_cell_display_string_only() -> None:
+    """날짜 파싱 없음: 문자열·숫 표시 문자열만."""
+    assert cei._excel_cell_display("05.07 18:18:04") == "05.07 18:18:04"
+    assert cei._excel_cell_display(12345.5) == "12345.5"
+    assert cei._excel_cell_display(None) == ""
 
 
-def test_parse_statement_mmdd_needs_reference_row() -> None:
-    assert cei._parse_date_iso("05.05 18:05:01", reference_iso="2026-06-01") == "2026-05-05"
-    assert cei._parse_date_iso("05.05 18:05:01") is None
+def test_build_keeps_any_date_text(monkeypatch) -> None:
+    """금액만 채워지면 날짜 열 무엇이든 저장."""
+    led = uuid4()
+    card_row = {"column_list": ["이용일", "가맹점명", "이용금액"]}
+
+    def fake_read_sheet(_bytes: bytes, sheet_name=None):
+        return (
+            "Sheet1",
+            1,
+            ["이용일", "가맹점명", "이용금액"],
+            [["헤더/요약문", "가맹", 3000]],
+        )
+
+    monkeypatch.setattr(cei, "read_sheet_tabular", fake_read_sheet)
+
+    rows, warns = cei.build_tb_rows_from_card_excel(
+        led_id=led,
+        card_row=card_row,
+        excel_bytes=b"dummy",
+    )
+    assert not warns
+    assert len(rows) == 1
+    assert rows[0]["data"]["date"] == "헤더/요약문"
 
 
 def test_build_tb_rows_from_card_basic(monkeypatch) -> None:

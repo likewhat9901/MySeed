@@ -24,7 +24,8 @@ class CardImportResponse(BaseModel):
     summary="카드 명세 엑셀 → tb_record",
     description=(
         "`card_name`(=tb_card.card_name)으로 `column_list`를 읽고, "
-        "[0]=날짜·[1]=가맹점·[2]=금액 헤더에 맞는 열만 뽑아 `data.date`·`title`·`amount`로 삽입합니다."
+        "[0]=날짜·[1]=가맹점·[2]=금액 헤더에 해당하는 열만 뽑아 "
+        "`data.date`(파싱 없이 문자열 원문)·`title`·`amount`로 삽입합니다."
     ),
     response_model=CardImportResponse,
 )
