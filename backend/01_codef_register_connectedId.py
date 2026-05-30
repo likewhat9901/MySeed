@@ -50,13 +50,14 @@ res = requests.post(
             "countryCode": "KR",
             "businessType": "CD",
             "clientType": "P",
-            "organization": "0302",
+            "organization": "0301",
             "loginType": "1",
-            "id": "likewhat9901",
+            "id": "parkkochen",     # KB카드 
+            # "id": "likewhat9901",   # 현대카드
             "password": encrypt_rsa("qag70025353@", public_key),
             "birthDate": "19990129",
-            "cardNo": "4033020225873307",
-            "cardPassword": encrypt_rsa("7596", public_key),
+            #"cardNo": "4033020225873307",    # 현대카드만
+            #"cardPassword": encrypt_rsa("7596", public_key),
         }]
     },
     headers={"Authorization": f"Bearer {access_token}"}

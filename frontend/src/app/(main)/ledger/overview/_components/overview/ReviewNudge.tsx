@@ -17,15 +17,15 @@ export default function ReviewNudge({ records, canvasId }: { records: LedgerReco
   return (
     <Link
       href={href}
-      className="flex items-center justify-between bg-amber-50 border border-amber-200 rounded-xl px-5 py-3 hover:bg-amber-100 transition-colors"
+      className="flex items-center justify-between bg-gray-50 border border-gray-200 rounded-xl px-5 py-3 hover:bg-gray-100 transition-colors"
     >
       <div>
-        <p className="text-sm font-medium text-amber-800">
-          이번달 리뷰하지 않은 지출 <span className="font-bold">{unreviewed}건</span>
+        <p className="text-xs font-medium text-gray-700">
+          리뷰하지 않은 지출 <span className="font-bold text-brand">{unreviewed}건</span>
         </p>
-        <p className="text-xs text-amber-600 mt-0.5">내역 탭에서 만족/후회를 체크하면 분석이 더 정확해져요.</p>
+        <p className="text-[11px] text-gray-400 mt-0.5">만족/후회를 체크하면 분석이 더 정확해져요.</p>
       </div>
-      <ArrowRight size={16} className="text-amber-500 shrink-0" />
+      <ArrowRight size={14} className="text-gray-400 shrink-0" />
     </Link>
   )
 }

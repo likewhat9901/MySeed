@@ -9,8 +9,10 @@ export default function KeywordSection({ records }: { records: LedgerRecord[] })
   const keywords = useMemo(() => {
     const freq = new Map<string, number>()
     for (const r of records) {
-      if (r.type !== '지출' || !r.memo) continue
-      const tokens = r.memo.split(/\s+/).filter(t => t.length >= 2 && !STOPWORDS.has(t))
+      if (r.type !== '지출') continue
+      const text = r.memo || r.category || ''
+      if (!text) continue
+      const tokens = text.split(/\s+/).filter(t => t.length >= 2 && !STOPWORDS.has(t))
       for (const token of tokens) {
         freq.set(token, (freq.get(token) ?? 0) + 1)
       }
@@ -27,7 +29,7 @@ export default function KeywordSection({ records }: { records: LedgerRecord[] })
     <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
       <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-3">자주 쓴 메모 키워드</p>
       {keywords.length === 0 ? (
-        <p className="text-xs text-gray-300">메모가 있는 지출 내역이 없어요.</p>
+        <p className="text-xs text-gray-300">지출 내역이 없어요.</p>
       ) : (
         <div className="flex flex-wrap gap-2">
           {keywords.map(k => {

@@ -18,12 +18,17 @@ export default function MaxVsAvgSection({ records }: { records: LedgerRecord[] }
         const avg = Math.round(amounts.reduce((s, v) => s + v, 0) / amounts.length)
         return { label, max, avg, count: amounts.length }
       })
-      .filter(i => i.count >= 2)
+      .filter(i => i.count >= 1)
       .sort((a, b) => b.max - a.max)
       .slice(0, 5)
   }, [records])
 
-  if (items.length === 0) return null
+  if (items.length === 0) return (
+    <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
+      <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-3">최대 vs 평균 지출</p>
+      <p className="text-xs text-gray-300">지출 내역이 없어요.</p>
+    </div>
+  )
 
   const absMax = Math.max(...items.flatMap(i => [i.max, i.avg]), 1)
 
@@ -52,7 +57,7 @@ export default function MaxVsAvgSection({ records }: { records: LedgerRecord[] }
           </div>
         ))}
       </div>
-      <p className="text-[10px] text-gray-300 mt-2">파랑: 평균 / 빨강: 최대 (2회 이상 지출 항목)</p>
+      <p className="text-[10px] text-gray-300 mt-2">파랑: 평균 / 빨강: 최대</p>
     </div>
   )
 }

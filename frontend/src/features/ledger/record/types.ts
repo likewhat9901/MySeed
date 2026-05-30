@@ -1,5 +1,5 @@
 // 내역(record) 데이터 타입 — 내역 탭 테이블 및 현황 카드 집계 기준
-import type { Category, TransactionType } from '@/constants/categories'
+import type { TransactionType } from '@/constants/categories'
 
 export type ReviewRating = 'good' | 'bad' | null
 export type Currency = 'KRW' | 'USD' | 'EUR' | 'JPY' | 'CNY'
@@ -9,7 +9,7 @@ export interface LedgerRecord {
   date:           string        // YYYY-MM-DD
   time:           string | null // HH:MM
   type:           TransactionType
-  category:       Category
+  category:       string
   subcategory:    string | null
   description:    string        // 내용/상호명
   amount:         number        // 원 단위 양수

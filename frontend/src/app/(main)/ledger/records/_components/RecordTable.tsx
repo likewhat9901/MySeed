@@ -3,7 +3,6 @@
 
 import { useState, useRef } from 'react'
 import { Plus, Save, X, ChevronDown, Upload } from 'lucide-react'
-import { CATEGORIES } from '@/constants/categories'
 import { RECORD_COLUMN_LABELS } from '@/features/ledger/record/types'
 import type { LedgerRecord, ReviewRating, RecordColumn, Currency } from '@/features/ledger/record/types'
 
@@ -30,6 +29,11 @@ const REVIEW_OPTIONS: { value: ReviewRating; label: string }[] = [
 ]
 
 const COLUMNS: RecordColumn[] = ['date', 'time', 'type', 'category', 'subcategory', 'description', 'amount', 'currency', 'paymentMethod', 'memo']
+
+const COL_MIN_WIDTH: Record<RecordColumn, number> = {
+  date: 100, time: 60, type: 72, category: 80, subcategory: 64,
+  description: 120, amount: 80, currency: 64, paymentMethod: 140, memo: 100,
+}
 
 function ReviewCell({ value, onChange }: { value: ReviewRating; onChange: (v: ReviewRating) => void }) {
   return (
@@ -96,7 +100,7 @@ export default function RecordTable({
   }
 
   const cellCls  = 'px-1.5 py-1 text-[11px] text-gray-700 border-b border-gray-100 whitespace-nowrap text-center'
-  const inputCls = 'w-full bg-transparent outline-none text-[11px] text-gray-700 placeholder:text-gray-300 text-center'
+  const inputCls = 'w-full bg-transparent outline-none text-[11px] text-gray-700 placeholder:text-gray-300 text-center overflow-hidden text-ellipsis'
   const selectCls = `${inputCls} cursor-pointer`
 
   return (
@@ -175,16 +179,17 @@ export default function RecordTable({
 
       {/* 테이블 */}
       <div className="flex-1 overflow-auto">
-        <table className="border-collapse" style={{ minWidth: 1000 }}>
+        <table className="border-collapse w-full" style={{ minWidth: '900px' }}>
           <thead className="sticky top-0 bg-white z-10">
             <tr className="border-b border-gray-200">
-              <th className="w-6" />
+              <th className="" />
               {COLUMNS.map(col => {
                 const isSelected = selectedColumn === col
                 return (
                   <th
                     key={col}
                     onClick={() => onColumnSelect(col)}
+                    style={{ minWidth: COL_MIN_WIDTH[col] }}
                     className={`px-1.5 py-1.5 text-center text-[10px] font-semibold tracking-wider whitespace-nowrap cursor-pointer select-none transition-colors ${
                       isSelected
                         ? 'text-brand bg-brand/5 border-b-2 border-brand'
@@ -212,13 +217,13 @@ export default function RecordTable({
                 <td className="px-1 py-1.5 border-b border-gray-100">
                   <button onClick={() => removeRow(r.id)} className="text-gray-300 hover:text-red-400 transition-colors"><X size={11} /></button>
                 </td>
-                <td className={cellCls} style={{ width: 100 }}>
+                <td className={cellCls}>
                   <input type="date" value={r.date} onChange={e => updateRow(r.id, { date: e.target.value })} className={inputCls} />
                 </td>
-                <td className={cellCls} style={{ width: 72 }}>
-                  <input type="time" value={r.time ?? ''} onChange={e => updateRow(r.id, { time: e.target.value || null })} className={inputCls} />
+                <td className={cellCls}>
+                  <input type="text" value={r.time ?? ''} onChange={e => updateRow(r.id, { time: e.target.value || null })} placeholder="--:--" className={inputCls} />
                 </td>
-                <td className={cellCls} style={{ width: 88 }}>
+                <td className={cellCls}>
                   <select value={r.type} onChange={e => updateRow(r.id, { type: e.target.value as LedgerRecord['type'] })} className={`${selectCls} ${r.type === '수입' ? 'text-green-600' : 'text-gray-700'}`}>
                     <option value="지출">지출</option>
                     <option value="수입">수입</option>
@@ -226,29 +231,27 @@ export default function RecordTable({
                     <option value="투자">투자</option>
                   </select>
                 </td>
-                <td className={cellCls} style={{ width: 120 }}>
-                  <select value={r.category} onChange={e => updateRow(r.id, { category: e.target.value as LedgerRecord['category'] })} className={selectCls}>
-                    {CATEGORIES.map(c => <option key={c} value={c}>{c}</option>)}
-                  </select>
+                <td className={cellCls}>
+                  <input value={r.category} onChange={e => updateRow(r.id, { category: e.target.value })} placeholder="대분류" className={inputCls} />
                 </td>
-                <td className={cellCls} style={{ width: 72 }}>
+                <td className={cellCls}>
                   <input value={r.subcategory ?? ''} onChange={e => updateRow(r.id, { subcategory: e.target.value || null })} placeholder="소분류" className={inputCls} />
                 </td>
-                <td className={cellCls} style={{ width: 140 }}>
-                  <input value={r.description} onChange={e => updateRow(r.id, { description: e.target.value })} placeholder="내용" className={inputCls} />
+                <td className={cellCls}>
+                  <input value={r.description} onChange={e => updateRow(r.id, { description: e.target.value })} placeholder="내용" title={r.description} className={inputCls} />
                 </td>
-                <td className={cellCls} style={{ width: 90 }}>
-                  <input type="number" value={r.amount || ''} onChange={e => updateRow(r.id, { amount: Number(e.target.value) })} placeholder="0" className={`${inputCls} text-right`} style={{ textAlign: 'right' }} />
+                <td className={cellCls}>
+                  <input type="number" value={r.amount || ''} onChange={e => updateRow(r.id, { amount: Number(e.target.value) })} placeholder="0" className={`${inputCls} text-right ${r.amount < 0 ? 'text-red-500' : ''}`} />
                 </td>
-                <td className={cellCls} style={{ width: 80 }}>
+                <td className={cellCls}>
                   <select value={r.currency} onChange={e => updateRow(r.id, { currency: e.target.value as Currency })} className={selectCls}>
                     {CURRENCIES.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
                 </td>
-                <td className={cellCls} style={{ width: 110 }}>
-                  <input value={r.paymentMethod ?? ''} onChange={e => updateRow(r.id, { paymentMethod: e.target.value || null })} placeholder="결제수단" className={inputCls} />
+                <td className={cellCls}>
+                  <input value={r.paymentMethod ?? ''} onChange={e => updateRow(r.id, { paymentMethod: e.target.value || null })} placeholder="결제수단" title={r.paymentMethod ?? ''} className={inputCls} />
                 </td>
-                <td className={cellCls} style={{ width: 120 }}>
+                <td className={cellCls}>
                   <input value={r.memo ?? ''} onChange={e => updateRow(r.id, { memo: e.target.value || null })} placeholder="메모" className={inputCls} />
                 </td>
                 <td className={cellCls}>

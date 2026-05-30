@@ -81,24 +81,8 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
   const [pendingAddr,     setPendingAddr]     = useState<string | null>(null)
   const [pendingStart,    setPendingStart]    = useState<CellPos | null>(null)
   const [selectedColumns, setSelectedColumns] = useState<RecordColumn[]>([])
-  const [anchorRect,      setAnchorRect]      = useState<{ right: number; top: number } | null>(null)
-
   const scrollRef = useRef<HTMLDivElement>(null)
   const tableRef  = useRef<HTMLTableElement>(null)
-
-  // 팝업이 열린 상태에서 스크롤하면 닫기
-  useEffect(() => {
-    const el = scrollRef.current
-    if (!el || !pendingAddr) return
-    const close = () => {
-      setPendingAddr(null)
-      setPendingStart(null)
-      setSelectedColumns([])
-      setAnchorRect(null)
-    }
-    el.addEventListener('scroll', close, { passive: true })
-    return () => el.removeEventListener('scroll', close)
-  }, [pendingAddr])
 
   const sheet = workbook.Sheets[selectedSheet]
   const data: (string | number | null)[][] = sheet
@@ -141,34 +125,20 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
     return row >= activeRange.r0 && row <= activeRange.r1 && col >= activeRange.c0 && col <= activeRange.c1
   }, [activeRange])
 
-  // 팝업 위치: getBoundingClientRect로 읽은 실제 셀 위치 기준.
-  // anchorRect는 컨테이너 기준 뷰포트 좌표 → position:fixed 로 붙임.
-  const popupStyle = useMemo(() => {
-    if (!anchorRect) return null
-    const container = scrollRef.current
-    if (!container) return null
+  function finishSelection(start: CellPos, end: CellPos) {
+    const addr = rangeToAddr(start, end)
+    setPendingAddr(addr)
+    setPendingStart({ row: Math.min(start.row, end.row), col: Math.min(start.col, end.col) })
+    setSelectedColumns([])
+  }
 
-    const POPUP_W = 288  // w-72
-    const POPUP_H = 160
-    const GAP     = 8
-    const viewW   = container.clientWidth
-    const viewH   = container.clientHeight
-
-    const enoughRight  = anchorRect.right + GAP + POPUP_W <= viewW
-    const enoughBottom = anchorRect.top   + POPUP_H       <= viewH
-
-    const containerRect = container.getBoundingClientRect()
-    const left = enoughRight
-      ? containerRect.left + anchorRect.right + GAP
-      : containerRect.left + anchorRect.right - POPUP_W - GAP
-    const top = enoughBottom
-      ? containerRect.top + anchorRect.top
-      : containerRect.top + anchorRect.top - POPUP_H + ROW_H
-
-    return { position: 'fixed' as const, left: left + 'px', top: top + 'px' }
-  }, [anchorRect])
-
-  function onMouseDown(row: number, col: number) {
+  function onMouseDown(row: number, col: number, e: React.MouseEvent) {
+    if (e.shiftKey && dragStart) {
+      // Shift+클릭: 기존 시작점 유지, 끝점만 갱신
+      setDragEnd({ row, col })
+      finishSelection(dragStart, { row, col })
+      return
+    }
     setDragStart({ row, col })
     setDragEnd({ row, col })
     setIsDragging(true)
@@ -185,33 +155,8 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
   function onMouseUp(row: number, col: number) {
     if (!isDragging || !dragStart) return
     setIsDragging(false)
-    const normStart = {
-      row: Math.min(dragStart.row, row),
-      col: Math.min(dragStart.col, col),
-    }
-    const addr = rangeToAddr(dragStart, { row, col })
-    setPendingAddr(addr)
-    setPendingStart(normStart)
-    setSelectedColumns([])
-
-    // 선택 범위 오른쪽 끝 셀의 실제 DOM 위치를 저장
-    const endCol  = Math.max(dragStart.col, col)
-    const endRow  = Math.min(dragStart.row, row)
-    const container = scrollRef.current
-    const table     = tableRef.current
-    if (container && table) {
-      // thead(1행) + tbody의 endRow번째 tr → endCol+1번째 td (+1은 행번호 열)
-      const tr = table.tBodies[0]?.rows[endRow]
-      const td = tr?.cells[endCol + 1]
-      if (td) {
-        const tdRect        = td.getBoundingClientRect()
-        const containerRect = container.getBoundingClientRect()
-        setAnchorRect({
-          right: tdRect.right - containerRect.left,
-          top:   tdRect.top   - containerRect.top,
-        })
-      }
-    }
+    setDragEnd({ row, col })
+    finishSelection(dragStart, { row, col })
   }
 
   function toggleColumn(col: RecordColumn) {
@@ -233,14 +178,12 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
     setPendingAddr(null)
     setPendingStart(null)
     setSelectedColumns([])
-    setAnchorRect(null)
   }
 
   function cancelMapping() {
     setPendingAddr(null)
     setPendingStart(null)
     setSelectedColumns([])
-    setAnchorRect(null)
   }
 
   const cellVal = (row: number, col: number): string => {
@@ -298,11 +241,8 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
             className="border-collapse text-xs"
             onMouseLeave={() => {
               if (isDragging && dragStart && dragEnd) {
-                const normStart = { row: Math.min(dragStart.row, dragEnd.row), col: Math.min(dragStart.col, dragEnd.col) }
                 setIsDragging(false)
-                setPendingAddr(rangeToAddr(dragStart, dragEnd))
-                setPendingStart(normStart)
-                setSelectedColumns([])
+                finishSelection(dragStart, dragEnd)
               }
             }}
           >
@@ -334,7 +274,7 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
                         className={`border border-gray-200 px-2 py-1 cursor-cell whitespace-nowrap max-w-[120px] overflow-hidden text-ellipsis transition-colors ${
                           inSel ? 'bg-green-100 text-green-900' : mapColor ? '' : 'hover:bg-blue-50 text-gray-700'
                         }`}
-                        onMouseDown={() => onMouseDown(ri, ci)}
+                        onMouseDown={e => onMouseDown(ri, ci, e)}
                         onMouseEnter={() => onMouseEnter(ri, ci)}
                         onMouseUp={() => onMouseUp(ri, ci)}
                       >
@@ -348,18 +288,17 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
           </table>
         </div>
 
-        {/* 컬럼 매핑 팝업 — 선택 셀 오른쪽에 fixed로 */}
-        {pendingAddr && popupStyle && (
-          <div
-            className="z-50 bg-white border border-gray-200 rounded-lg shadow-lg p-2.5 w-72"
-            style={popupStyle}
-          >
-            <div className="flex items-center gap-1 mb-2">
-              <span className="text-[10px] text-gray-400">{pendingAddr}</span>
-              <span className="text-[10px] text-gray-300 mx-1">·</span>
-              <span className="text-[10px] text-gray-400">{selectedColumns.length}/{pendingColCount}열 선택</span>
+      </div>
+
+      {/* 하단 고정 컬럼 선택 패널 */}
+      {pendingAddr && (
+        <div className="shrink-0 border-t border-brand/20 bg-brand/5 px-4 py-2.5">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 shrink-0">
+              <span className="text-[10px] font-mono text-green-700 font-semibold">{pendingAddr}</span>
+              <span className="text-[10px] text-gray-400">{selectedColumns.length}/{pendingColCount}열</span>
             </div>
-            <div className="flex flex-wrap gap-1 mb-2.5">
+            <div className="flex flex-wrap gap-1 flex-1">
               {ALL_COLUMNS.map(col => {
                 const idx = selectedColumns.indexOf(col)
                 const isSelected = idx !== -1
@@ -383,32 +322,25 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
                 )
               })}
             </div>
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-gray-300">
-                {selectedColumns.length < pendingColCount
-                  ? `${pendingColCount - selectedColumns.length}개 더 선택`
-                  : '순서대로 각 열에 매핑'}
-              </span>
-              <div className="flex gap-1.5">
-                <button onClick={cancelMapping} className="text-[11px] text-gray-400 hover:text-gray-600 px-2 py-1">
-                  취소
-                </button>
-                <button
-                  onClick={confirmMapping}
-                  disabled={selectedColumns.length !== pendingColCount}
-                  className={`text-[11px] font-medium px-3 py-1 rounded-md transition-colors ${
-                    selectedColumns.length === pendingColCount
-                      ? 'bg-brand text-white hover:bg-brand-dark'
-                      : 'bg-gray-100 text-gray-300 cursor-not-allowed'
-                  }`}
-                >
-                  연결
-                </button>
-              </div>
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button onClick={cancelMapping} className="text-[11px] text-gray-400 hover:text-gray-600 px-2 py-1">
+                취소
+              </button>
+              <button
+                onClick={confirmMapping}
+                disabled={selectedColumns.length !== pendingColCount}
+                className={`text-[11px] font-medium px-3 py-1 rounded-md transition-colors ${
+                  selectedColumns.length === pendingColCount
+                    ? 'bg-brand text-white hover:bg-brand-dark'
+                    : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                }`}
+              >
+                연결
+              </button>
             </div>
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

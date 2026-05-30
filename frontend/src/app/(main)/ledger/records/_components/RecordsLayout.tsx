@@ -26,6 +26,7 @@ export default function RecordsLayout() {
   const save  = useRecordSave(canvasId, records, setCurrentRecId, setCurrentRecName, notifyRecordSaved)
 
   const [modal, setModal] = useState<ModalState>('closed')
+  const [pendingSource, setPendingSource] = useState<'banksalad' | 'custom' | null>(null)
 
   // URL rec 파라미터로 record 로드
   useEffect(() => {
@@ -40,27 +41,43 @@ export default function RecordsLayout() {
     })
   }, [recIdFromUrl, currentRecId, setRecords, setCurrentRecId])
 
-  // 파일 선택 완료 → 소스 선택 모달
+  // 가져오기 버튼 → 소스 선택 모달 먼저
   function handleUploadClick() {
+    setModal('source')
+  }
+
+  // 소스 선택 후 파일 input 열기
+  function handleSelectPreset(presetId: string) {
+    setPendingSource('banksalad')
+    setModal('closed')
     excel.fileInputRef.current?.click()
   }
 
-  useEffect(() => {
-    if (excel.workbook) setModal('source')
-  }, [excel.workbook])
-
-  function handleSelectPreset(presetId: string) {
-    const preset = IMPORT_PRESETS.find(p => p.id === presetId)
-    if (!preset || !excel.workbook) return
-    const sheet = excel.activeSheet
-    const entries = preset.mappings(sheet)
-    setRecords(prev => applyMappings(entries, excel.workbook!, prev))
+  function handleSelectCustom() {
+    setPendingSource('custom')
     setModal('closed')
+    excel.fileInputRef.current?.click()
   }
+
+  // 파일 선택 완료 → pendingSource에 따라 처리
+  useEffect(() => {
+    if (!excel.workbook || !pendingSource) return
+    if (pendingSource === 'banksalad') {
+      const preset = IMPORT_PRESETS.find(p => p.id === 'banksalad')
+      if (preset) {
+        const entries = preset.mappings(excel.activeSheet)
+        setRecords(prev => applyMappings(entries, excel.workbook!, prev))
+      }
+      setPendingSource(null)
+    } else {
+      setModal('custom')
+    }
+  }, [excel.workbook])
 
   function handleCustomConfirm(entries: ColumnMappingEntry[]) {
     if (!excel.workbook) return
     setRecords(prev => applyMappings(entries, excel.workbook!, prev))
+    setPendingSource(null)
     setModal('closed')
   }
 
@@ -107,7 +124,7 @@ export default function RecordsLayout() {
       {modal === 'source' && (
         <ImportSourceModal
           onSelectPreset={handleSelectPreset}
-          onSelectCustom={() => setModal('custom')}
+          onSelectCustom={handleSelectCustom}
           onClose={() => setModal('closed')}
         />
       )}

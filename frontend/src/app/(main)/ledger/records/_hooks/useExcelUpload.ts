@@ -5,7 +5,6 @@ import { useState, useRef, useCallback } from 'react'
 import * as XLSX from 'xlsx'
 import type { WorkBook } from 'xlsx'
 import { uploadExcelFile } from '@/features/ledger/record/storage'
-import { CATEGORIES } from '@/constants/categories'
 import type { LedgerRecord, RecordColumn, ColumnMappingEntry } from '@/features/ledger/record/types'
 
 export function applyMappings(
@@ -39,8 +38,16 @@ export function applyMappings(
       if (!colData.type) patch.type = num >= 0 ? '수입' : '지출'
     }
     if (colData.category) {
-      const raw = String(colData.category[i] ?? '')
-      patch.category = (CATEGORIES as readonly string[]).includes(raw) ? raw as LedgerRecord['category'] : '기타'
+      const raw = String(colData.category[i] ?? '').trim()
+      patch.category = raw as LedgerRecord['category']
+    }
+    if (colData.subcategory) patch.subcategory   = String(colData.subcategory[i]   ?? '').trim() || null
+    if (colData.time)        patch.time          = String(colData.time[i]          ?? '').trim() || null
+    if (colData.memo)        patch.memo          = String(colData.memo[i]          ?? '').trim() || null
+    if (colData.paymentMethod) patch.paymentMethod = String(colData.paymentMethod[i] ?? '').trim() || null
+    if (colData.currency) {
+      const raw = String(colData.currency[i] ?? '').trim().toUpperCase()
+      if (['KRW','USD','EUR','JPY','CNY'].includes(raw)) patch.currency = raw as LedgerRecord['currency']
     }
     if (colData.type) {
       const raw = String(colData.type[i] ?? '')

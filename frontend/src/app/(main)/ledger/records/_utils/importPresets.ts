@@ -24,44 +24,4 @@ export const IMPORT_PRESETS: ImportPreset[] = [
       { column: 'category',    sheet, address: 'E2:E10000' },
     ],
   },
-  {
-    id:    'shinhan',
-    label: '신한카드',
-    note:  '신한카드 홈페이지 > 이용내역 > 엑셀 저장',
-    mappings: (sheet) => [
-      { column: 'date',        sheet, address: 'A2:A10000' },
-      { column: 'description', sheet, address: 'B2:B10000' },
-      { column: 'amount',      sheet, address: 'D2:D10000' },
-    ],
-  },
-  {
-    id:    'kookmin',
-    label: '국민카드',
-    note:  'KB국민카드 홈페이지 > 이용내역 조회 > 엑셀 저장',
-    mappings: (sheet) => [
-      { column: 'date',        sheet, address: 'A2:A10000' },
-      { column: 'description', sheet, address: 'C2:C10000' },
-      { column: 'amount',      sheet, address: 'E2:E10000' },
-    ],
-  },
-  {
-    id:    'hana',
-    label: '하나카드',
-    note:  '하나카드 홈페이지 > 이용내역 > 엑셀 다운로드',
-    mappings: (sheet) => [
-      { column: 'date',        sheet, address: 'A2:A10000' },
-      { column: 'description', sheet, address: 'B2:B10000' },
-      { column: 'amount',      sheet, address: 'C2:C10000' },
-    ],
-  },
-  {
-    id:    'samsung',
-    label: '삼성카드',
-    note:  '삼성카드 홈페이지 > 이용내역 > 엑셀 다운로드',
-    mappings: (sheet) => [
-      { column: 'date',        sheet, address: 'A2:A10000' },
-      { column: 'description', sheet, address: 'B2:B10000' },
-      { column: 'amount',      sheet, address: 'D2:D10000' },
-    ],
-  },
 ]
