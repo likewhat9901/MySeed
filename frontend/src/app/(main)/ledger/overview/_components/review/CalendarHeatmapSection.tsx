@@ -94,7 +94,7 @@ export default function CalendarHeatmapSection({ records, refMonth, viewMode = '
 
   if (viewMode === 'week') {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
+      <div>
         <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-3">이번 주 지출 히트맵</p>
         <div className="grid grid-cols-7 gap-1">
           {weekCells.cells.map(cell => (
@@ -119,7 +119,7 @@ export default function CalendarHeatmapSection({ records, refMonth, viewMode = '
 
   if (viewMode === 'year') {
     return (
-      <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
+      <div>
         <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-3">월별 지출 히트맵</p>
         <div className="grid grid-cols-4 gap-1.5">
           {yearCells.cells.map(cell => (
@@ -142,7 +142,7 @@ export default function CalendarHeatmapSection({ records, refMonth, viewMode = '
   }
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
+    <div>
       <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-3">이번달 지출 달력</p>
       <div className="grid grid-cols-7 gap-0.5 mb-1">
         {DOW_LABELS.map(d => (

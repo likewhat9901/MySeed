@@ -120,25 +120,25 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
 
   return (
     <aside
-      className={`h-full bg-gray-50 border-r border-gray-200 flex flex-col shrink-0 select-none transition-all duration-200 overflow-hidden ${
+      className={`h-full bg-white border-r border-gray-300 flex flex-col shrink-0 select-none transition-all duration-200 overflow-hidden ${
         isOpen ? 'w-56' : 'w-10'
       }`}
     >
       {isOpen ? (
         <>
           {/* 헤더 */}
-          <div className="flex items-center justify-between px-3 h-8 border-b border-gray-200 shrink-0">
-            <span className="text-[10px] font-semibold text-gray-400 tracking-widest">내 가계부</span>
+          <div className="flex items-center justify-between px-3 h-8 border-b border-gray-300 shrink-0">
+            <span className="text-[9px] font-bold tracking-[0.18em] uppercase text-gray-500">내 가계부</span>
             <div className="flex items-center gap-1">
               <button
                 onClick={startCreating}
-                className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+                className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors"
               >
                 <Plus size={13} />
               </button>
               <button
                 onClick={onToggle}
-                className="w-5 h-5 flex items-center justify-center rounded text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+                className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors"
               >
                 <ChevronSideIcon rotated={false} />
               </button>
@@ -146,7 +146,7 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
           </div>
 
           {/* 목록 */}
-          <div className="flex-1 overflow-y-auto py-1.5">
+          <div className="flex-1 overflow-y-auto py-1">
             {isCreating && (
               <div className="px-2 py-1">
                 <input
@@ -159,7 +159,7 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
                   }}
                   onBlur={cancelCreating}
                   placeholder="가계부 이름…"
-                  className="w-full text-xs px-2 py-1 border border-green-400 rounded-md outline-none bg-white"
+                  className="w-full text-xs px-2 py-1 border border-gray-300 outline-none bg-white focus:border-gray-500"
                 />
               </div>
             )}
@@ -178,18 +178,17 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
                   <div key={ledger.led_id}>
                     {/* 가계부 행 */}
                     <div
-                      className={`group flex items-center gap-1 px-2 py-1.5 rounded-md mx-1 cursor-pointer transition-colors ${
-                        isActive ? 'bg-gray-100 text-gray-800' : 'text-gray-600 hover:bg-gray-100'
+                      className={`group flex items-center gap-1 px-2 py-1.5 cursor-pointer transition-colors border-l-2 ${
+                        isActive
+                          ? 'border-gray-800 bg-gray-50 text-gray-900'
+                          : 'border-transparent text-gray-600 hover:bg-gray-50'
                       }`}
                     >
                       <button
                         onClick={() => toggleLedger(ledger.led_id)}
                         className="shrink-0 text-gray-400"
                       >
-                        {isExpanded
-                          ? <ChevronDown size={12} />
-                          : <ChevronRight size={12} />
-                        }
+                        {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                       </button>
                       <span
                         className="flex-1 text-xs font-medium truncate"
@@ -201,7 +200,7 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
 
                     {/* record 목록 */}
                     {isExpanded && (
-                      <div className="ml-5 mr-1 mb-1">
+                      <div className="ml-5 border-l border-gray-200 mb-1">
                         {recs.length === 0 ? (
                           <p className="px-2 py-1 text-[11px] text-gray-300">내역 없음</p>
                         ) : (
@@ -210,13 +209,13 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
                             return (
                               <div
                                 key={rec.rec_id}
-                                className={`group flex items-center gap-1.5 px-2 py-1 rounded-md cursor-pointer transition-colors ${
-                                  isRecActive ? 'bg-brand/10 text-brand' : 'text-gray-500 hover:bg-gray-100'
+                                className={`group flex items-center gap-1.5 px-2 py-1 cursor-pointer transition-colors ${
+                                  isRecActive ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
                                 }`}
                                 onClick={() => handleRecordClick(ledger.led_id, rec.rec_id)}
                               >
-                                <FileText size={11} className="shrink-0 opacity-60" />
-                                <span className="flex-1 text-[11px] truncate">{rec.rec_name}</span>
+                                <FileText size={11} className="shrink-0 opacity-50" />
+                                <span className={`flex-1 text-[11px] truncate ${isRecActive ? 'font-semibold' : ''}`}>{rec.rec_name}</span>
                                 <button
                                   onClick={e => { e.stopPropagation(); handleDeleteRecord(ledger.led_id, rec.rec_id) }}
                                   className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-all"
@@ -229,7 +228,7 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
                         )}
                         {/* 새 내역 추가 */}
                         {creatingRecordFor === ledger.led_id ? (
-                          <div className="flex items-center gap-1">
+                          <div className="flex items-center gap-1 px-2 py-1">
                             <input
                               autoFocus
                               value={newRecordName}
@@ -240,11 +239,11 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
                               }}
                               onBlur={() => { setCreatingRecordFor(null); setNewRecordName('') }}
                               placeholder="내역 이름…"
-                              className="flex-1 min-w-0 text-[11px] px-2 h-[22px] border border-brand rounded-md outline-none bg-white"
+                              className="flex-1 min-w-0 text-[11px] px-2 h-[22px] border border-gray-300 outline-none bg-white focus:border-gray-500"
                             />
                             <button
                               onMouseDown={e => { e.preventDefault(); handleCreateRecord(ledger.led_id) }}
-                              className="shrink-0 px-1.5 h-[22px] text-[10px] font-medium rounded-md bg-brand text-white hover:bg-brand-dark"
+                              className="shrink-0 px-1.5 h-[22px] text-[10px] font-bold bg-gray-800 text-white hover:bg-gray-600 transition-colors"
                             >
                               추가
                             </button>
@@ -252,7 +251,7 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
                         ) : (
                           <button
                             onClick={() => { setCreatingRecordFor(ledger.led_id); setNewRecordName('') }}
-                            className="flex items-center gap-1.5 px-2 py-1 text-[11px] text-gray-400 hover:text-brand transition-colors w-full rounded-md hover:bg-gray-100"
+                            className="flex items-center gap-1.5 px-2 py-1 text-[11px] text-gray-400 hover:text-gray-700 transition-colors w-full hover:bg-gray-50"
                           >
                             <Plus size={10} />
                             새 내역 추가
@@ -271,7 +270,7 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
         <div className="flex flex-col items-center pt-2.5">
           <button
             onClick={onToggle}
-            className="w-7 h-7 flex items-center justify-center rounded-md text-gray-400 hover:bg-gray-100 hover:text-gray-600 transition-colors"
+            className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors"
           >
             <ChevronSideIcon rotated={true} />
           </button>

@@ -42,7 +42,7 @@ export function applyMappings(
       patch.category = raw as LedgerRecord['category']
     }
     if (colData.subcategory) patch.subcategory   = String(colData.subcategory[i]   ?? '').trim() || null
-    if (colData.time)        patch.time          = String(colData.time[i]          ?? '').trim() || null
+    if (colData.time)        patch.time          = formatTime(colData.time[i])
     if (colData.memo)        patch.memo          = String(colData.memo[i]          ?? '').trim() || null
     if (colData.paymentMethod) patch.paymentMethod = String(colData.paymentMethod[i] ?? '').trim() || null
     if (colData.currency) {
@@ -68,6 +68,7 @@ export function applyMappings(
       paymentMethod: null,
       memo:          null,
       review:        null,
+      isFixed:       false,
     }
   })
 }
@@ -132,11 +133,30 @@ function extractColumn(
 function formatDate(raw: string | number | null | undefined): string {
   if (raw == null) return new Date().toISOString().slice(0, 10)
   if (typeof raw === 'number') {
-    const date = new Date((raw - 25569) * 86400 * 1000)
-    return date.toISOString().slice(0, 10)
+    // 날짜 부분만 추출 (datetime 시리얼의 소수점 제거), UTC 기준으로 변환
+    const dateSerial = Math.floor(raw)
+    const d = new Date((dateSerial - 25569) * 86400 * 1000)
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
   }
   const s = String(raw)
   const m = s.match(/(\d{4})[.\-\/](\d{1,2})[.\-\/](\d{1,2})/)
   if (m) return `${m[1]}-${m[2].padStart(2, '0')}-${m[3].padStart(2, '0')}`
   return new Date().toISOString().slice(0, 10)
+}
+
+function formatTime(raw: string | number | null | undefined): string | null {
+  if (raw == null) return null
+  if (typeof raw === 'number') {
+    // Excel 시간 소수값 (0~1) 또는 datetime 시리얼의 소수 부분
+    const frac = raw - Math.floor(raw)
+    if (frac < 0.0001) return null
+    const totalMin = Math.round(frac * 1440)
+    const h = Math.floor(totalMin / 60), m = totalMin % 60
+    return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+  }
+  const s = String(raw).trim()
+  if (!s) return null
+  const m = s.match(/^(\d{1,2}):(\d{2})/)
+  if (m) return `${m[1].padStart(2, '0')}:${m[2]}`
+  return null
 }

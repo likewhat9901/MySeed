@@ -96,7 +96,7 @@ export default function DayOfWeekSection({ records, viewMode, activeWeekStart, a
     .slice(0, 3)
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 px-4 py-3">
+    <div>
       <p className="text-[11px] font-semibold text-gray-400 tracking-wider mb-4">{title}</p>
       {!hasData ? (
         <p className="text-xs text-gray-300">지출 내역이 없어요.</p>

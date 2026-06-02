@@ -91,7 +91,7 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
 
   const maxCols = Math.max(0, ...data.map((r: unknown[]) => r.length))
   const COLS = Math.min(maxCols + 2, 26)
-  const ROWS = Math.min(data.length + 2, 100)
+  const ROWS = data.length + 1
 
   const selectedParsed = selectedAddr ? parseAddr(selectedAddr) : null
   const pendingParsed  = pendingAddr  ? parseAddr(pendingAddr)  : null
@@ -186,9 +186,54 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
     setSelectedColumns([])
   }
 
+  // 열 헤더 클릭 → 해당 열 전체 선택 (Shift: 기존 시작점~열 끝까지 확장)
+  function onColHeaderClick(ci: number, e: React.MouseEvent) {
+    const lastRow = Math.max(0, data.length - 1)
+    if (e.shiftKey && dragStart) {
+      finishSelection(dragStart, { row: lastRow, col: ci })
+    } else {
+      setDragStart({ row: 0, col: ci })
+      finishSelection({ row: 0, col: ci }, { row: lastRow, col: ci })
+    }
+  }
+
+  // 행 번호 클릭 → 해당 행 전체 선택 (Shift: 기존 시작점~행 끝까지 확장)
+  function onRowHeaderClick(ri: number, e: React.MouseEvent) {
+    const lastCol = Math.max(0, maxCols - 1)
+    if (e.shiftKey && dragStart) {
+      finishSelection(dragStart, { row: ri, col: lastCol })
+    } else {
+      setDragStart({ row: ri, col: 0 })
+      finishSelection({ row: ri, col: 0 }, { row: ri, col: lastCol })
+    }
+  }
+
   const cellVal = (row: number, col: number): string => {
     const v = data[row]?.[col]
-    return v == null ? '' : String(v)
+    if (v == null) return ''
+    if (typeof v === 'number') {
+      const intPart  = Math.floor(v)
+      const fracPart = v - intPart
+      // Excel 날짜 시리얼 (2000~2100년 범위: 36526~73050)
+      if (intPart >= 36526 && intPart <= 73050) {
+        const ms = (intPart - 25569) * 86400 * 1000
+        const d  = new Date(ms)
+        const dateStr = `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, '0')}-${String(d.getUTCDate()).padStart(2, '0')}`
+        if (fracPart > 0.0001) {
+          const totalMin = Math.round(fracPart * 1440)
+          const h = Math.floor(totalMin / 60), m = totalMin % 60
+          return `${dateStr} ${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+        }
+        return dateStr
+      }
+      // Excel 시간 소수 (0 < v < 1)
+      if (v > 0 && v < 1) {
+        const totalMin = Math.round(v * 1440)
+        const h = Math.floor(totalMin / 60), m = totalMin % 60
+        return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+      }
+    }
+    return String(v)
   }
 
   return (
@@ -250,7 +295,11 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
               <tr>
                 <th className="sticky top-0 left-0 z-20 w-8 min-w-[2rem] bg-gray-50 border border-gray-200 text-gray-400 text-center text-[10px]" />
                 {Array.from({ length: COLS }, (_, ci) => (
-                  <th key={ci} className="sticky top-0 z-10 bg-gray-50 border border-gray-200 px-2 py-1 text-gray-400 text-center font-medium min-w-[64px] text-[10px]">
+                  <th
+                    key={ci}
+                    onClick={e => onColHeaderClick(ci, e)}
+                    className="sticky top-0 z-10 bg-gray-50 border border-gray-200 px-2 py-1 text-gray-400 text-center font-medium min-w-[64px] text-[10px] cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-colors select-none"
+                  >
                     {colName(ci)}
                   </th>
                 ))}
@@ -259,7 +308,10 @@ export default function ExcelGrid({ workbook, selectedSheet, selectedAddr, mappi
             <tbody>
               {Array.from({ length: ROWS }, (_, ri) => (
                 <tr key={ri}>
-                  <td className="sticky left-0 z-10 bg-gray-50 border border-gray-200 px-1.5 text-gray-400 text-center text-[10px] font-medium min-w-[2rem]">
+                  <td
+                    onClick={e => onRowHeaderClick(ri, e)}
+                    className="sticky left-0 z-10 bg-gray-50 border border-gray-200 px-1.5 text-gray-400 text-center text-[10px] font-medium min-w-[2rem] cursor-pointer hover:bg-blue-50 hover:text-blue-600 transition-colors select-none"
+                  >
                     {ri + 1}
                   </td>
                   {Array.from({ length: COLS }, (_, ci) => {

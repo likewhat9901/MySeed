@@ -39,7 +39,7 @@ export default function CategoryDonutSection({ expense, categoryItems }: Props) 
   }, [top, expense])
 
   return (
-    <div className="bg-white rounded-2xl border border-gray-200 flex flex-col overflow-hidden" style={{ height: '320px' }}>
+    <div className="flex flex-col overflow-hidden">
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
         <p className="text-xs font-semibold text-gray-800">By category</p>
       </div>

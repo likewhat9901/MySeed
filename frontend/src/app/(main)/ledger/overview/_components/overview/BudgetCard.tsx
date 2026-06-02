@@ -14,9 +14,9 @@ interface Props {
 }
 
 function fmtK(n: number) {
-  if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}억원`
-  if (n >= 10_000) return `${Math.round(n / 10_000).toLocaleString()}만원`
-  return `${n.toLocaleString()}원`
+  if (n >= 100_000_000) return `${(n / 100_000_000).toFixed(1)}억`
+  if (n >= 10_000) return `${Math.round(n / 10_000).toLocaleString()}만`
+  return `${n.toLocaleString()}`
 }
 
 function fmtLarge(n: number) {
@@ -68,115 +68,106 @@ export default function BudgetCard({ expense, categoryItems, daysLeft, viewMode 
 
   return (
     <>
-      <div className="bg-white rounded-2xl border border-gray-200 overflow-hidden">
-        {/* BUDGET 진행바 */}
-        <div className="px-6 pt-5 pb-4">
-          <div className="flex justify-between items-center mb-1.5">
-            <p className="text-[10px] font-semibold text-gray-400 tracking-wider">BUDGET</p>
-            {hasBudget && (
-              <span className="text-[10px] text-gray-400 tabular-nums">
-                {fmtLarge(expense)} / {fmtLarge(budget.total)} · {budgetPct}%
-              </span>
-            )}
-          </div>
-          <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-            {hasBudget ? (
-              <div
-                className={`h-full rounded-full transition-all ${budgetPct >= 100 ? 'bg-red-400' : budgetPct >= 80 ? 'bg-orange-400' : 'bg-green-400'}`}
-                style={{ width: `${budgetPct}%` }}
-              />
-            ) : (
-              <div className="h-full w-full bg-gray-100 rounded-full" />
-            )}
-          </div>
+      <div className="bg-white rounded-2xl border border-gray-200 px-5 py-5 flex flex-col gap-3">
+        {/* 행 1: BUDGET 헤더 + 진행률 % */}
+        <div className="flex justify-between items-center">
+          <p className="text-[10px] font-semibold text-gray-400 tracking-wider">BUDGET</p>
+          {hasBudget ? (
+            <span className={`text-[10px] font-semibold tabular-nums ${
+              budgetPct >= 100 ? 'text-red-500' : budgetPct >= 80 ? 'text-orange-500' : 'text-green-600'
+            }`}>
+              {budgetPct}%{budgetPct >= 80 ? ' ⚠' : ''}
+            </span>
+          ) : (
+            <span className="text-[10px] font-semibold text-gray-400">미설정</span>
+          )}
         </div>
 
-        {/* 상태 + 카테고리 */}
-        <div className="grid grid-cols-[200px_1fr] border-t border-gray-100 items-start">
-          {/* 좌: 상태 + Adjust budget 버튼 */}
-          <div className="px-6 py-4 border-r border-gray-100 flex flex-col justify-between gap-3 self-start">
-            <div>
-              {hasBudget ? (
-                <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full ${
-                  budgetPct < 80 ? 'bg-green-100 text-green-700'
-                  : budgetPct < 100 ? 'bg-yellow-100 text-yellow-700'
-                  : 'bg-red-100 text-red-600'
-                }`}>
-                  {budgetPct < 80 ? 'On track' : budgetPct < 100 ? 'Watch out' : 'Over budget'}
-                </span>
-              ) : (
-                <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">
-                  예산 미설정
-                </span>
-              )}
-              <div className="mt-2 flex items-baseline gap-1.5">
-                <p className="text-xl font-extrabold text-gray-900">{fmtLarge(expense)}</p>
-                {hasBudget && <p className="text-xs text-gray-400">/ {fmtLarge(budget.total)}</p>}
-              </div>
-              {hasBudget && (
-                <p className="text-[11px] text-gray-500 mt-1">
-                  <span className="font-semibold">{fmtLarge(Math.max(remaining, 0))}</span> remaining
-                  {viewMode === 'month' && daysLeft > 0 && <span className="text-gray-400"> · {daysLeft}일 남음</span>}
-                </p>
-              )}
-            </div>
-            <button
-              onClick={openModal}
-              className="w-full bg-gray-900 text-white text-xs font-semibold rounded-xl py-2.5 hover:bg-gray-700 transition-colors"
-            >
-              Adjust budget →
-            </button>
-          </div>
+        {/* 진행 바 */}
+        <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+          {hasBudget ? (
+            <div
+              className={`h-full rounded-full transition-all ${budgetPct >= 100 ? 'bg-red-400' : budgetPct >= 80 ? 'bg-orange-400' : 'bg-green-400'}`}
+              style={{ width: `${budgetPct}%` }}
+            />
+          ) : (
+            <div className="h-full w-full bg-gray-100 rounded-full" />
+          )}
+        </div>
 
-          {/* 우: 카테고리 */}
-          <div className="px-5 py-4 flex flex-col" style={{ maxHeight: '160px' }}>
-            <div className="flex justify-between items-center mb-2 shrink-0">
-              <p className="text-[10px] font-semibold text-gray-400 tracking-wider">BY CATEGORY</p>
-              <p className="text-[10px] text-gray-300">used {hasBudget ? '/ budget' : ''}</p>
-            </div>
-            {top5.length === 0 ? (
-              <p className="text-xs text-gray-300">지출 내역이 없어요.</p>
-            ) : (
-              <div className="flex flex-col gap-2 overflow-y-auto">
-                {top5.map(item => {
-                  const catBudget = budget.categories[item.label] ?? 0
-                  const barMax = catBudget > 0 ? catBudget : item.amount
-                  const barPct = Math.min((item.amount / Math.max(barMax, 1)) * 100, 100)
-                  const isOver = catBudget > 0 && item.amount > catBudget
-                  return (
-                    <div key={item.label}>
-                      <div className="flex justify-between items-center mb-0.5">
-                        <div className="flex items-center gap-1.5">
-                          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: item.color }} />
-                          <span className="text-xs font-medium text-gray-700">{item.label}</span>
-                          {isOver && (
-                            <span className="text-[9px] font-bold text-red-500 bg-red-50 px-1 rounded">over</span>
-                          )}
-                        </div>
-                        <span className="text-[11px] tabular-nums text-gray-500">
-                          {fmtK(item.amount)}
-                          <span className="text-gray-300 ml-1">
-                            / {catBudget > 0 ? fmtK(catBudget) : '미설정'}
-                          </span>
-                        </span>
-                      </div>
-                      {catBudget > 0 ? (
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{ width: `${barPct}%`, background: isOver ? '#f87171' : item.color, opacity: 0.75 }}
-                          />
-                        </div>
-                      ) : (
-                        <div className="h-1.5 rounded-full border border-dashed border-gray-300" />
-                      )}
+        {/* 행 3: 금액 + remaining (좌/우 정렬) */}
+        {hasBudget ? (
+          <div className="flex items-baseline justify-between">
+            <p className="text-xs text-gray-500 tabular-nums">
+              {fmtLarge(expense)} / {fmtLarge(budget.total)}
+            </p>
+            <p className="text-[11px] text-gray-500 tabular-nums">
+              <span className="font-semibold text-gray-800">{fmtLarge(Math.max(remaining, 0))}</span> remaining
+            </p>
+          </div>
+        ) : (
+          <p className="text-xs text-gray-400 tabular-nums">{fmtLarge(expense)}</p>
+        )}
+
+        {/* 행 4 (미설정일 때만): 상태 뱃지 */}
+        {!hasBudget && (
+          <div>
+            <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-400">
+              예산 미설정
+            </span>
+          </div>
+        )}
+
+        {/* 행 5: 남은 일수 (month 모드에서만) */}
+        {hasBudget && viewMode === 'month' && daysLeft > 0 && (
+          <p className="text-[11px] text-gray-400">{daysLeft}일 남음</p>
+        )}
+
+        {/* 카테고리별 예산 — 1열 한 줄 (3개 초과 시 스크롤) */}
+        {hasBudget && top5.some(it => (budget.categories[it.label] ?? 0) > 0) && (
+          <div className="border-t border-gray-100 pt-2 flex flex-col gap-1 overflow-y-auto pr-1" style={{ maxHeight: 60 }}>
+            {top5
+              .filter(it => (budget.categories[it.label] ?? 0) > 0)
+              .map(item => {
+                const catBudget = budget.categories[item.label] ?? 0
+                const pct = Math.round((item.amount / catBudget) * 100)
+                const barPct = Math.min(pct, 100)
+                const isOver = pct >= 100
+                return (
+                  <div key={item.label} className="flex items-center gap-2 min-w-0">
+                    {/* 이름 */}
+                    <div className="flex items-center gap-1 shrink-0" style={{ width: 64 }}>
+                      <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: item.color }} />
+                      <span className="text-[10px] font-medium text-gray-700 truncate">{item.label}</span>
                     </div>
-                  )
-                })}
-              </div>
-            )}
+                    {/* 바 */}
+                    <div className="relative flex-1 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="absolute inset-y-0 left-0 rounded-full transition-all"
+                        style={{ width: `${barPct}%`, background: isOver ? '#f87171' : item.color, opacity: 0.85 }}
+                      />
+                    </div>
+                    {/* % */}
+                    <span className={`text-[10px] tabular-nums shrink-0 text-right ${isOver ? 'text-red-500 font-semibold' : 'text-gray-500'}`} style={{ width: 32 }}>
+                      {pct}%
+                    </span>
+                    {/* 사용/예산 */}
+                    <span className="text-[10px] text-gray-400 tabular-nums shrink-0 text-right" style={{ width: 64 }}>
+                      {fmtK(item.amount)}/{fmtK(catBudget)}
+                    </span>
+                  </div>
+                )
+              })}
           </div>
-        </div>
+        )}
+
+        {/* 행 6: Adjust 버튼 (하단 고정) */}
+        <button
+          onClick={openModal}
+          className="mt-auto w-full bg-gray-900 text-white text-xs font-semibold rounded-xl py-2.5 hover:bg-gray-700 transition-colors"
+        >
+          Adjust budget →
+        </button>
       </div>
 
       {/* Adjust Budget 모달 */}

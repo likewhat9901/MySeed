@@ -3,7 +3,7 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { LayoutDashboard, FileInput } from 'lucide-react'
+import { LayoutDashboard, LayoutList, FileInput, Target, ClipboardList, NotebookPen } from 'lucide-react'
 import { useLocale } from '@/lib/i18n/LocaleContext'
 import { editorMessages } from '@/lib/i18n/messages/editorMessages'
 
@@ -16,8 +16,12 @@ export default function LedgerTabBar() {
   const t            = editorMessages[locale]
 
   const TABS = [
-    { href: '/ledger/overview', label: t.tabOverview,     icon: LayoutDashboard },
-    { href: '/ledger/records',  label: t.tabTransactions, icon: FileInput },
+    { href: '/ledger/records',   label: t.tabTransactions, icon: FileInput },
+    { href: '/ledger/overview',  label: t.tabOverview,     icon: LayoutDashboard },
+    { href: '/ledger/overview2', label: t.tabOverview2,    icon: LayoutList },
+    { href: '/ledger/goals',     label: t.tabGoals,        icon: Target },
+    { href: '/ledger/goals2',    label: t.tabGoals2,       icon: ClipboardList },
+    { href: '/ledger/diary',     label: t.tabDiary,        icon: NotebookPen },
   ]
 
   return (

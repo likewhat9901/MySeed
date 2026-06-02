@@ -50,7 +50,7 @@ export default function KeywordAndMaxSection({ records }: { records: LedgerRecor
   const absMax = Math.max(...maxItems.flatMap(i => [i.max, i.avg]), 1)
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 flex flex-col divide-y divide-gray-100">
+    <div className="flex flex-col divide-y divide-gray-100">
       {/* 키워드 */}
       <div className="px-4 py-3">
         <p className="text-[10px] font-semibold text-gray-400 tracking-wider mb-2">자주 쓴 키워드</p>
