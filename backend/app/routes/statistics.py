@@ -10,10 +10,10 @@ from fastapi import APIRouter, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
-from app.deps.supabase_user import require_supabase_user_id
+from app.deps.supabase_user import require_ledger_actor
 from app.services.bs_reduction_import import compute_top_reduction_categories
 from app.services.record_statistics import compute_led_statistics, parse_stat_method
-from app.services.supabase_data import fetch_tb_record_rows_for_ledger, ledger_belongs_to_member
+from app.services.supabase_data import fetch_tb_record_rows_for_ledger
 
 router = APIRouter(tags=["statistics"])
 
@@ -63,8 +63,8 @@ class LedgerStatisticsResponse(BaseModel):
     "/statistics",
     summary="가계부(tb_record) 금액 합 또는 평균",
     description=(
-        "**Authorization: Bearer `<Supabase access token>` 필수.** "
-        "`mem_id`는 토큰의 `sub`으로만 검증합니다(쿼리로 받지 않음). "
+        "**Authorization: Bearer** (선택, 로컬은 `ALLOW_SWAGGER_LED_ID_AUTH=true` 시 `led_id`만으로 가능). "
+        "`mem_id`는 토큰 `sub` 또는 ledger 소유자 조회로 확인합니다. "
         "`category` 없음 또는 빈 목록 또는 공백만: 전체 내역 집계. "
         "**`category` 같은 키를 여러 번 보내면**(예: `?category=식비&category=교통`) "
         "그 중 하나에라도 해당하는 레코드를 **합쳐서** 합·평균합니다(OR). "
@@ -86,14 +86,12 @@ async def get_ledger_statistics(
     ),
     authorization: Annotated[
         str | None,
-        Header(description="Bearer <Supabase access token> 필수"),
+        Header(description="Bearer 선택(로컬은 ALLOW_SWAGGER_LED_ID_AUTH=true 시 생략 가능)"),
     ] = None,
 ) -> LedgerStatisticsResponse:
     settings = get_settings()
     if not settings.supabase_configured():
         raise HTTPException(status_code=503, detail="SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 필요")
-
-    mem_id = require_supabase_user_id(authorization)
 
     m = parse_stat_method(method)
     if m is None:
@@ -105,14 +103,7 @@ async def get_ledger_statistics(
     applied = _trimmed_category_queries(category)
 
     try:
-        if not ledger_belongs_to_member(led_id, mem_id):
-            raise HTTPException(status_code=403, detail="이 가계부(ledger)에 대한 권한이 없습니다")
-    except HTTPException:
-        raise
-    except Exception as e:
-        raise HTTPException(status_code=502, detail=f"ledger 조회 실패: {e!s}") from e
-
-    try:
+        require_ledger_actor(led_id, authorization)
         rows = fetch_tb_record_rows_for_ledger(led_id)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"tb_record 조회 실패: {e!s}") from e
@@ -153,18 +144,15 @@ async def get_top_reduction_categories(
     limit: int = Query(3, ge=1, le=10, description="상위 N개 (기본 3)"),
     authorization: Annotated[
         str | None,
-        Header(description="Bearer <Supabase access token> 필수"),
+        Header(description="Bearer 선택(로컬은 ALLOW_SWAGGER_LED_ID_AUTH=true 시 생략 가능)"),
     ] = None,
 ) -> TopReductionCategoriesResponse:
     settings = get_settings()
     if not settings.supabase_configured():
         raise HTTPException(status_code=503, detail="SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 필요")
 
-    mem_id = require_supabase_user_id(authorization)
-
     try:
-        if not ledger_belongs_to_member(led_id, mem_id):
-            raise HTTPException(status_code=403, detail="이 가계부(ledger)에 대한 권한이 없습니다")
+        require_ledger_actor(led_id, authorization)
         rows = fetch_tb_record_rows_for_ledger(led_id)
     except HTTPException:
         raise

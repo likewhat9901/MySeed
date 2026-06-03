@@ -91,6 +91,25 @@ def rpc_get_canvas_widgets(led_id: UUID) -> list[dict[str, Any]]:
     return list(res.data or [])
 
 
+def fetch_ledger_owner_mem_id(led_id: UUID) -> UUID | None:
+    """tb_ledger.mem_id 조회(service role). 없으면 None."""
+    res = (
+        _client()
+        .table("tb_ledger")
+        .select("mem_id")
+        .eq("led_id", str(led_id))
+        .limit(1)
+        .execute()
+    )
+    rows = res.data or []
+    if not rows:
+        return None
+    try:
+        return UUID(str(rows[0]["mem_id"]))
+    except (KeyError, ValueError):
+        return None
+
+
 def ledger_belongs_to_member(led_id: UUID, mem_id: UUID) -> bool:
     """tb_ledger 에서 led_id 가 mem_id 소유인지 (service role 로 조회)."""
     res = (
