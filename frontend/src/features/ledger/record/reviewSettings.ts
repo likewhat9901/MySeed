@@ -6,15 +6,19 @@ import { useCallback, useEffect, useState } from 'react'
 const KEY = 'mm.reviewSettings.v1'
 
 export interface ReviewSettings {
-  smallAmount: number       // 소액 기준 (이 금액 미만이면 ②소액 그룹)
-  alwaysReview: string[]    // 금액 무관 항상 점검할 카테고리 라벨
-  exclude: string[]         // 점검에서 제외할 카테고리 (③ 기타 제외 항목)
+  smallAmount: number                          // 소액 기준 (이 금액 미만이면 ②소액 그룹)
+  alwaysReview: string[]                       // 금액 무관 항상 점검할 카테고리 라벨
+  exclude: string[]                            // 점검에서 제외할 카테고리 (③ 기타 제외 항목)
+  fixedCategories: string[]                    // 고정 지출 카테고리 (③ 고정 지출로 자동 분류)
+  smallDefaults: string[]                      // 소액 자동 만족 카테고리 목록
 }
 
 const DEFAULT_SETTINGS: ReviewSettings = {
   smallAmount: 10_000,
   alwaysReview: ['카페·간식'],
   exclude: [],
+  fixedCategories: ['주거·관리비'],
+  smallDefaults: [],
 }
 
 function load(): ReviewSettings {

@@ -8,7 +8,9 @@
       "Bash(mkdir \"c:\\\\01WorkSpace\\\\moneymoney_260330\\\\frontend\\\\src\\\\app\\\\\\(main\\)\\\\editor\\\\import\")",
       "Bash(cd \"/c/01WorkSpace/moneymoney_260330/frontend\" && grep -n \"'[가-힣]\\\\|\\\\\"[가-힣]\" src/app/\\\\\\(main\\\\\\)/editor/import/_components/index.tsx src/app/\\\\\\(main\\\\\\)/editor/import/_components/ImportToolbar.tsx 2>/dev/null | grep -v \"//\\\\|저장됨\\\\|저장 중\\\\|파일 읽는\\\\|엑셀 파일\\\\|템플릿 선택\\\\|저장됨\\\\|저장\")",
       "Read(//c/c/01WorkSpace/moneymoney_260330/frontend/src/app/\\(main\\)/editor/import/_components/**)",
-      "PowerShell(& \"frontend\\\\node_modules\\\\.bin\\\\tsc.cmd\" --noEmit -p frontend\\\\tsconfig.json)"
+      "PowerShell(& \"frontend\\\\node_modules\\\\.bin\\\\tsc.cmd\" --noEmit -p frontend\\\\tsconfig.json)",
+      "Bash(cd /c/01WorkSpace/moneymoney_260330/frontend/src && grep -n \"점검 필요\\\\|항상 점검\\\\|점검 제외\" \"app/\\(main\\)/ledger/records/_components/ReviewModal.tsx\" \"app/\\(main\\)/ledger/records/_components/RulesModal.tsx\")",
+      "Read(//c/c/01WorkSpace/moneymoney_260330/frontend/src/app/\\(main\\)/ledger/records/_components/**)"
     ],
     "additionalDirectories": [
       "c:\\01WorkSpace\\moneymoney_260330\\frontend\\src\\app\\(main)\\editor"

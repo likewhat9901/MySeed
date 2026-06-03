@@ -2,21 +2,21 @@
 'use client'
 
 import { useMemo, useRef, useState } from 'react'
-import { X, Settings, ChevronRight, ChevronDown, ChevronUp, Lock, ThumbsUp } from 'lucide-react'
+import { X, ChevronRight, ChevronDown, ChevronUp, Settings2 } from 'lucide-react'
 import type { LedgerRecord, ReviewRating } from '@/features/ledger/record/types'
 import { useReviewSettings } from '@/features/ledger/record/reviewSettings'
-import { CATEGORIES } from '@/constants/categories'
 
 interface Props {
   records: LedgerRecord[]                                       // 이번달 필터된 내역
   onComplete: (updates: Record<string, ReviewRating>) => void   // 점검 완료 시 일괄 반영
   onClose: () => void
+  onOpenRules: () => void                                       // 규칙 모달 열기
 }
 
-const RATINGS: { value: Exclude<ReviewRating, null>; label: string }[] = [
-  { value: 'good', label: '😊' },
-  { value: 'soso', label: '😐' },
-  { value: 'bad',  label: '😞' },
+const RATINGS: { value: Exclude<ReviewRating, null>; label: string; activeColor: string }[] = [
+  { value: 'good', label: '만족', activeColor: 'text-green-600 border-green-400 bg-green-50' },
+  { value: 'soso', label: '보통', activeColor: 'text-gray-600 border-gray-400 bg-gray-50'  },
+  { value: 'bad',  label: '후회', activeColor: 'text-red-500 border-red-400 bg-red-50'    },
 ]
 
 function fmt(n: number) {
@@ -27,7 +27,7 @@ function fmtShort(n: number) {
   return `₩${n.toLocaleString()}`
 }
 
-/* 😊😐😞 선택 버튼 그룹 */
+/* 만족·보통·후회 텍스트 인라인 버튼 그룹 */
 function RatingButtons({ value, onPick }: { value: ReviewRating; onPick: (v: ReviewRating) => void }) {
   return (
     <div className="flex items-center gap-1 shrink-0">
@@ -35,10 +35,10 @@ function RatingButtons({ value, onPick }: { value: ReviewRating; onPick: (v: Rev
         <button
           key={r.value}
           onClick={() => onPick(value === r.value ? null : r.value)}
-          className={`text-sm w-6 h-6 flex items-center justify-center border transition-all ${
+          className={`text-[10px] font-semibold px-1.5 py-0.5 border transition-all ${
             value === r.value
-              ? 'border-gray-800 bg-gray-50 opacity-100'
-              : 'border-gray-200 opacity-30 hover:opacity-70'
+              ? r.activeColor
+              : 'border-gray-200 text-gray-300 hover:text-gray-500 hover:border-gray-300'
           }`}
         >
           {r.label}
@@ -48,23 +48,33 @@ function RatingButtons({ value, onPick }: { value: ReviewRating; onPick: (v: Rev
   )
 }
 
-export default function ReviewModal({ records, onComplete, onClose }: Props) {
-  const { settings, update } = useReviewSettings()
-  const [settingsOpen, setSettingsOpen] = useState(false)
+export default function ReviewModal({ records, onComplete, onClose, onOpenRules }: Props) {
+  const { settings } = useReviewSettings()
   const [openCats, setOpenCats] = useState<Set<string>>(new Set())
   const [openAuto, setOpenAuto] = useState<Set<string>>(new Set())
-  const [filter, setFilter] = useState<'todo' | 'done' | 'all'>('todo') // ①② 표시 필터
+  const [filter, setFilter] = useState<'todo' | 'done' | 'all'>('todo')
+  const [step, setStep] = useState<'review' | 'loading' | 'done'>('review')
+  const [completedCount, setCompletedCount] = useState(0)
+  const [confirmReset, setConfirmReset] = useState(false)
+  const pendingUpdates = useRef<Record<string, ReviewRating>>({})
   const bodyRef = useRef<HTMLDivElement>(null)
 
-  // 설정 패널을 열고 본문을 맨 위로 스크롤해 패널이 보이게 함
-  function openSettings() {
-    setSettingsOpen(true)
-    bodyRef.current?.scrollTo({ top: 0, behavior: 'smooth' })
-  }
-
-  // 점검 결과는 모달 내부 draft에만 쌓고, 점검 완료 시 한 번에 반영한다.
-  // 분류(아래 useMemo)는 원본 records 기준이라 리뷰를 눌러도 항목이 이동하지 않는다.
-  const [draft, setDraft] = useState<Record<string, ReviewRating>>({})
+  // draft 초기값 — smallDefaults 카테고리의 소액·미점검 항목을 만족으로 미리 채움
+  const [draft, setDraft] = useState<Record<string, ReviewRating>>(() => {
+    const init: Record<string, ReviewRating> = {}
+    const small = settings.smallAmount
+    const fixed = new Set(settings.fixedCategories)
+    const exclude = new Set(settings.exclude)
+    const always = new Set(settings.alwaysReview)
+    const autoGood = new Set(settings.smallDefaults)
+    for (const r of records) {
+      if (r.type !== '지출' || r.amount <= 0) continue
+      if (r.review !== null || r.isFixed || fixed.has(r.category) || exclude.has(r.category)) continue
+      if (r.amount >= small || always.has(r.category)) continue
+      if (autoGood.has(r.category)) init[r.id] = 'good'
+    }
+    return init
+  })
   const reviewOf = (r: LedgerRecord): ReviewRating => (r.id in draft ? draft[r.id] : r.review)
 
   function setOne(id: string, v: ReviewRating) {
@@ -83,16 +93,17 @@ export default function ReviewModal({ records, onComplete, onClose }: Props) {
     const small = settings.smallAmount
     const always = new Set(settings.alwaysReview)
     const exclude = new Set(settings.exclude)
+    const fixed = new Set(settings.fixedCategories)
 
     const needBig: LedgerRecord[] = []      // 점검필요 — 큰 지출 (미점검)
     const needAlways: LedgerRecord[] = []   // 점검필요 — 항상점검 소액 (미점검)
     const smallMap = new Map<string, LedgerRecord[]>() // 소액 지출 (카테고리별, 미점검)
-    const fixedItems: LedgerRecord[] = []   // 고정 지출 (③)
+    const fixedItems: LedgerRecord[] = []   // 고정 지출 (③) — isFixed 또는 fixedCategories
     const excludedItems: LedgerRecord[] = []// 사용자가 점검 제외로 지정한 카테고리 (③)
     const reviewTargets: LedgerRecord[] = []// 진행도 분모 — 고정·제외 뺀 점검 대상 전체(이미 점검한 것 포함)
 
     for (const r of expenses) {
-      if (r.isFixed) { fixedItems.push(r); continue }
+      if (r.isFixed || fixed.has(r.category)) { fixedItems.push(r); continue }
       if (exclude.has(r.category)) { excludedItems.push(r); continue }
 
       // ①②에는 점검 대상 전체를 담는다(원본 review 기준 분류 → 누른 항목이 이동하지 않음).
@@ -155,23 +166,43 @@ export default function ReviewModal({ records, onComplete, onClose }: Props) {
   }
 
   function handleComplete() {
-    // 실제로 바뀐 것만 추려서 반영
     const updates: Record<string, ReviewRating> = {}
     for (const [id, v] of Object.entries(draft)) {
       const orig = records.find(r => r.id === id)
       if (orig && orig.review !== v) updates[id] = v
     }
-    onComplete(updates)
+    pendingUpdates.current = updates
+    setCompletedCount(Object.keys(updates).length)
+    setStep('loading')
+    setTimeout(() => setStep('done'), 600)
   }
 
-  /* 한 줄 거래 행 */
+  function fmtDate(date: string) {
+    const [, m, d] = date.split('-')
+    return `${Number(m)}/${Number(d)}`
+  }
+
+  /* 한 줄 거래 행 — 점검용 (리뷰 버튼 있음) */
   function Row({ r }: { r: LedgerRecord }) {
     return (
       <div className="flex items-center gap-3 px-3 py-1.5 border-b border-gray-100 last:border-b-0">
+        <span className="text-[10px] text-gray-400 tabular-nums shrink-0 w-8">{fmtDate(r.date)}</span>
         <span className="text-[11px] text-gray-800 truncate flex-1 min-w-0">{r.description || '(내용 없음)'}</span>
         <span className="text-[10px] text-gray-400 w-16 shrink-0 truncate">{r.category}</span>
         <span className="text-[11px] font-semibold text-gray-900 tabular-nums w-20 text-right shrink-0">{r.amount.toLocaleString()}</span>
         <RatingButtons value={reviewOf(r)} onPick={v => setOne(r.id, v)} />
+      </div>
+    )
+  }
+
+  /* 한 줄 거래 행 — 참고용 (리뷰 버튼 없음, ③에서 사용) */
+  function ReadOnlyRow({ r }: { r: LedgerRecord }) {
+    return (
+      <div className="flex items-center gap-3 px-3 py-1.5 border-b border-gray-100 last:border-b-0">
+        <span className="text-[10px] text-gray-400 tabular-nums shrink-0 w-8">{fmtDate(r.date)}</span>
+        <span className="text-[11px] text-gray-500 truncate flex-1 min-w-0">{r.description || '(내용 없음)'}</span>
+        <span className="text-[10px] text-gray-400 w-16 shrink-0 truncate">{r.category}</span>
+        <span className="text-[11px] text-gray-400 tabular-nums w-20 text-right shrink-0">{r.amount.toLocaleString()}</span>
       </div>
     )
   }
@@ -192,6 +223,44 @@ export default function ReviewModal({ records, onComplete, onClose }: Props) {
           </div>
         </button>
         {!collapsed && children}
+      </div>
+    )
+  }
+
+  /* 로딩 화면 */
+  if (step === 'loading') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+        <div className="bg-white w-[320px] border border-gray-300 shadow-xl flex flex-col items-center justify-center py-10 gap-3">
+          <div className="w-6 h-6 border-2 border-gray-800 border-t-transparent rounded-full animate-spin" />
+          <p className="text-[12px] text-gray-500">점검 결과를 저장하는 중...</p>
+        </div>
+      </div>
+    )
+  }
+
+  /* 완료 화면 */
+  if (step === 'done') {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
+        <div className="bg-white w-[320px] border border-gray-300 shadow-xl flex flex-col">
+          <div className="flex flex-col items-center justify-center py-8 gap-2">
+            <p className="text-xl">🎉</p>
+            <p className="text-[13px] font-bold text-gray-800">이번달 점검 완료</p>
+            <p className="text-[11px] text-gray-400 text-center leading-relaxed">
+              {completedCount > 0 ? `${completedCount}건을 점검했어요.` : '변경된 항목이 없어요.'}
+              <br />저장하면 기록에 반영됩니다.
+            </p>
+          </div>
+          <div className="flex justify-end px-4 py-3 border-t border-gray-300">
+            <button
+              onClick={() => onComplete(pendingUpdates.current)}
+              className="text-xs font-bold px-4 py-2 bg-gray-900 text-white hover:bg-gray-700 transition-colors"
+            >
+              확인
+            </button>
+          </div>
+        </div>
       </div>
     )
   }
@@ -223,93 +292,24 @@ export default function ReviewModal({ records, onComplete, onClose }: Props) {
                 </button>
               ))}
             </div>
-            {/* 우: 진행도 바 + 설정 */}
+            {/* 우: 진행도 바 + 규칙 */}
             <div className="flex-1 h-1.5 bg-gray-100">
               <div className="h-full bg-gray-800 transition-all" style={{ width: `${pct}%` }} />
             </div>
             <span className="text-[11px] font-semibold text-gray-700 tabular-nums shrink-0">{pct}%</span>
             <button
-              onClick={() => setSettingsOpen(o => !o)}
+              onClick={onOpenRules}
               className="flex items-center gap-1 text-[10px] font-semibold text-gray-500 border border-gray-300 px-2 py-1 hover:bg-gray-50 shrink-0"
             >
-              <Settings size={11} /> 설정
+              <Settings2 size={11} /> 규칙
             </button>
           </div>
-
-          {/* 설정 패널 */}
-          {settingsOpen && (
-            <div className="mt-3 pt-3 border-t border-gray-200 space-y-3">
-              <div className="flex items-center gap-2">
-                <label className="text-[10px] text-gray-500 w-16 shrink-0">소액 기준</label>
-                <div className="flex items-center border border-gray-300">
-                  <span className="px-2 text-[10px] text-gray-400 bg-gray-50 border-r border-gray-200 py-1">₩</span>
-                  <input
-                    type="number"
-                    value={settings.smallAmount}
-                    onChange={e => update({ smallAmount: Math.max(0, Number(e.target.value) || 0) })}
-                    className="w-24 px-2 py-1 text-[11px] text-gray-800 outline-none tabular-nums"
-                  />
-                </div>
-                <span className="text-[10px] text-gray-400">미만은 소액으로 묶음</span>
-              </div>
-              <div className="flex items-start gap-2">
-                <label className="text-[10px] text-gray-500 w-16 shrink-0 pt-1">항상 점검</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {CATEGORIES.filter(c => c !== '수입').map(c => {
-                    const on = settings.alwaysReview.includes(c)
-                    return (
-                      <button
-                        key={c}
-                        onClick={() => update({
-                          alwaysReview: on
-                            ? settings.alwaysReview.filter(x => x !== c)
-                            : [...settings.alwaysReview, c],
-                          // 항상점검으로 켜면 제외에서는 빼준다 (상충 방지)
-                          exclude: on ? settings.exclude : settings.exclude.filter(x => x !== c),
-                        })}
-                        className={`text-[10px] px-2 py-1 border transition-colors ${
-                          on ? 'border-gray-800 bg-gray-800 text-white' : 'border-gray-300 text-gray-500 hover:bg-gray-50'
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-              <div className="flex items-start gap-2">
-                <label className="text-[10px] text-gray-500 w-16 shrink-0 pt-1">점검 제외</label>
-                <div className="flex flex-wrap gap-1.5">
-                  {CATEGORIES.filter(c => c !== '수입').map(c => {
-                    const on = settings.exclude.includes(c)
-                    return (
-                      <button
-                        key={c}
-                        onClick={() => update({
-                          exclude: on
-                            ? settings.exclude.filter(x => x !== c)
-                            : [...settings.exclude, c],
-                          // 제외로 켜면 항상점검에서는 빼준다 (상충 방지)
-                          alwaysReview: on ? settings.alwaysReview : settings.alwaysReview.filter(x => x !== c),
-                        })}
-                        className={`text-[10px] px-2 py-1 border transition-colors ${
-                          on ? 'border-gray-400 bg-gray-200 text-gray-600 line-through' : 'border-gray-300 text-gray-500 hover:bg-gray-50'
-                        }`}
-                      >
-                        {c}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            </div>
-          )}
         </div>
 
         {/* 본문 스크롤 */}
         <div ref={bodyRef} className="flex-1 overflow-y-auto px-5 py-4 space-y-5 bg-gray-50">
 
-          {/* ① 점검 필요 */}
+          {/* ① 리뷰 필요 */}
           <section>
             {(() => {
               const big = visible(needBig)
@@ -317,9 +317,8 @@ export default function ReviewModal({ records, onComplete, onClose }: Props) {
               return <>
                 <div className="flex items-baseline justify-between mb-2">
                   <h3 className="text-[11px] font-bold text-gray-800">
-                    ① 점검 필요 <span className="text-gray-400 font-medium">({big.length + always.length}건)</span>
+                    ① 리뷰 필요 <span className="text-gray-400 font-medium">({big.length + always.length}건)</span>
                   </h3>
-                  <span className="text-[10px] text-gray-400">{fmt(settings.smallAmount)} 이상</span>
                 </div>
 
                 <div className="space-y-2">
@@ -330,7 +329,7 @@ export default function ReviewModal({ records, onComplete, onClose }: Props) {
                   </Box>
 
                   {always.length > 0 && (
-                    <Box boxKey="always" title={<span>🏷 항상 점검 (소액 · {always.length}건)</span>}>
+                    <Box boxKey="always" title={<span>🏷 항상 리뷰 (소액 · {always.length}건)</span>}>
                       <p className="px-3 py-1.5 text-[10px] text-gray-400 border-b border-gray-100">
                         {settings.alwaysReview.join('·')}은(는) 금액과 무관하게 점검해요.
                       </p>
@@ -362,9 +361,9 @@ export default function ReviewModal({ records, onComplete, onClose }: Props) {
                     {allIds.length > 0 && (
                       <button
                         onClick={() => setMany(allIds, 'good')}
-                        className="text-[10px] font-semibold text-gray-600 border border-gray-300 px-2 py-1 hover:bg-gray-100"
+                        className="text-[10px] font-semibold text-gray-700 border border-green-600 bg-green-50 px-2 py-1 hover:bg-green-100"
                       >
-                        전부 😊 처리
+                        전부 만족
                       </button>
                     )}
                   </div>
@@ -401,46 +400,41 @@ export default function ReviewModal({ records, onComplete, onClose }: Props) {
             })()}
           </section>
 
-          {/* ③ 자동 만족 처리 */}
+          {/* ③ 리뷰 제외 — 구분선으로 점검 영역과 분리 */}
+          <div className="flex items-center gap-2 pt-1">
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="text-[10px] text-gray-400 shrink-0">자동 제외</span>
+            <div className="flex-1 h-px bg-gray-200" />
+          </div>
+
           <section>
             {(() => {
               const fixedTot = fixedItems.reduce((s, r) => s + r.amount, 0)
               const exclTot = excludedItems.reduce((s, r) => s + r.amount, 0)
-              const autoGroups = [
-                { key: 'fixed',   icon: <Lock size={11} />, label: '고정 지출', rows: fixedItems, total: fixedTot },
-                { key: 'exclude', icon: <ThumbsUp size={11} />, label: '기타 제외 항목', rows: excludedItems, total: exclTot },
-              ].filter(g => g.rows.length > 0)
+              const groups = [
+                { key: 'fixed',   icon: '🔒', label: '고정 지출',  rows: fixedItems,    total: fixedTot },
+                { key: 'exclude', icon: '⊘',  label: '리뷰 제외',  rows: excludedItems, total: exclTot  },
+              ] // 항목 없어도 항상 표시
               return <>
-                <div className="flex items-baseline justify-between mb-2">
-                  <h3 className="text-[11px] font-bold text-gray-800">
-                    ③ 자동 만족 처리 <span className="text-gray-400 font-medium">({fixedItems.length + excludedItems.length}건 · {fmtShort(fixedTot + exclTot)})</span>
-                  </h3>
-                  <button
-                    onClick={openSettings}
-                    className="flex items-center gap-1 text-[10px] font-semibold text-gray-500 border border-gray-300 px-2 py-1 hover:bg-gray-100"
-                  >
-                    <Settings size={11} /> 제외 규칙 수정
-                  </button>
-                </div>
-                <div className="border border-gray-300">
-                  <p className="px-3 py-1.5 text-[10px] text-gray-400 border-b border-gray-100">
-                    점검에서 제외된 항목이에요. 되돌릴 게 있으면 펼쳐서 수정하세요.
-                  </p>
-                  {autoGroups.length === 0 ? (
-                    <p className="px-3 py-3 text-[11px] text-gray-300">없음</p>
-                  ) : autoGroups.map(g => {
+                <h3 className="text-[11px] font-bold text-gray-500 mb-2">
+                  ③ 리뷰 제외 <span className="font-medium">({fixedItems.length + excludedItems.length}건 · {fmtShort(fixedTot + exclTot)})</span>
+                </h3>
+                <div className="border border-gray-200">
+                  {groups.map(g => {
                     const open = openAuto.has(g.key)
                     return (
                       <div key={g.key} className="border-b border-gray-100 last:border-b-0">
                         <button onClick={() => toggleAuto(g.key)} className="flex items-center gap-2 w-full px-3 py-1.5 text-left">
-                          <span className="text-gray-400 shrink-0">{g.icon}</span>
-                          <span className="text-[11px] text-gray-700 flex-1">{g.label}</span>
+                          <span className="text-[11px] text-gray-400 shrink-0">{g.icon}</span>
+                          <span className="text-[11px] text-gray-500 flex-1">{g.label}</span>
                           <span className="text-[10px] text-gray-400 tabular-nums shrink-0">{g.rows.length}건 · {fmtShort(g.total)}</span>
                           {open ? <ChevronUp size={12} className="text-gray-400 shrink-0" /> : <ChevronDown size={12} className="text-gray-400 shrink-0" />}
                         </button>
                         {open && (
                           <div className="bg-gray-50 border-t border-gray-100">
-                            {g.rows.map(r => <Row key={r.id} r={r} />)}
+                            {g.rows.length === 0
+                              ? <p className="px-3 py-2 text-[11px] text-gray-300">해당 내역 없음</p>
+                              : g.rows.map(r => <ReadOnlyRow key={r.id} r={r} />)}
                           </div>
                         )}
                       </div>
@@ -458,14 +452,48 @@ export default function ReviewModal({ records, onComplete, onClose }: Props) {
           <span className="text-[11px] text-gray-500">
             {remaining > 0 ? `아직 ${remaining}건 남았어요` : '모두 점검했어요 🎉'}
           </span>
-          <button
-            onClick={handleComplete}
-            className="text-xs font-bold px-4 py-2 bg-gray-900 text-white hover:bg-gray-700 transition-colors"
-          >
-            점검 완료
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setConfirmReset(true)}
+              className="text-xs font-semibold text-gray-400 border border-gray-300 px-3 py-2 hover:bg-gray-50 transition-colors"
+            >
+              초기화
+            </button>
+            <button
+              onClick={handleComplete}
+              className="text-xs font-bold px-4 py-2 bg-gray-900 text-white hover:bg-gray-700 transition-colors"
+            >
+              점검 완료
+            </button>
+          </div>
         </div>
       </div>
+
+      {/* 초기화 확인 다이얼로그 */}
+      {confirmReset && (
+        <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/20">
+          <div className="bg-white w-[280px] border border-gray-300 shadow-xl flex flex-col">
+            <div className="px-5 py-4">
+              <p className="text-[13px] font-bold text-gray-800 mb-1">점검 초기화</p>
+              <p className="text-[11px] text-gray-500">이번 점검에서 입력한 내용이 모두 사라져요. 초기화할까요?</p>
+            </div>
+            <div className="flex justify-end gap-2 px-4 py-3 border-t border-gray-200">
+              <button
+                onClick={() => setConfirmReset(false)}
+                className="text-xs font-semibold text-gray-500 border border-gray-300 px-3 py-1.5 hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => { setDraft({}); setConfirmReset(false) }}
+                className="text-xs font-bold text-white bg-gray-900 px-3 py-1.5 hover:bg-gray-700 transition-colors"
+              >
+                초기화
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

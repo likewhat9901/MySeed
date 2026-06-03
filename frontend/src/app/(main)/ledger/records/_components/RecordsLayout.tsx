@@ -3,18 +3,21 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { ChevronDown, ChevronLeft, ChevronRight, Download, Plus, Save, ScanSearch } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, Columns3, Download, Plus, RotateCcw, Save, ScanSearch, Settings2, Trash2 as TrashIcon } from 'lucide-react'
 import { useLedgerContext } from '../../_context/LedgerContext'
 import { useAuth } from '@/features/auth/AuthContext'
 import { useExcelUpload, applyMappings } from '../_hooks/useExcelUpload'
 import { useRecordSave } from '../_hooks/useRecordSave'
+import { useColumnVisibility } from '../_hooks/useColumnVisibility'
 import { getRecord, getRecordList } from '@/features/ledger/record/rpc'
 import { IMPORT_PRESETS } from '../_utils/importPresets'
+import { RECORD_COLUMN_LABELS } from '@/features/ledger/record/types'
 import type { ColumnMappingEntry, LedgerRecord } from '@/features/ledger/record/types'
 import RecordTable from './RecordTable'
 import ImportSourceModal from './ImportSourceModal'
 import CustomMappingModal from './CustomMappingModal'
 import ReviewModal from './ReviewModal'
+import RulesModal from './RulesModal'
 
 type ModalState = 'closed' | 'source' | 'custom' | 'review'
 
@@ -26,8 +29,13 @@ export default function RecordsLayout() {
 
   const excel = useExcelUpload(user?.id)
   const save  = useRecordSave(canvasId, records, setCurrentRecId, setCurrentRecName, notifyRecordSaved)
+  const { visible: visibleColumns, toggle: toggleColumn, ALL_COLUMNS } = useColumnVisibility()
 
   const [modal, setModal] = useState<ModalState>('closed')
+  const [rulesOpen, setRulesOpen] = useState(false)
+  const [confirmReset, setConfirmReset] = useState<'review' | 'records' | null>(null)
+  const [columnsOpen, setColumnsOpen] = useState(false)
+  const columnsRef = useRef<HTMLDivElement>(null)
   const [pendingSource, setPendingSource] = useState<'banksalad' | 'custom' | null>(null)
 
   // 월별 필터
@@ -66,6 +74,16 @@ export default function RecordsLayout() {
   const [saveAsName, setSaveAsName] = useState('')
   const saveAsInputRef = useRef<HTMLInputElement>(null)
   const dropdownRef    = useRef<HTMLDivElement>(null)
+
+  // 컬럼 드롭다운 바깥 클릭 시 닫기
+  useEffect(() => {
+    if (!columnsOpen) return
+    function handler(e: MouseEvent) {
+      if (columnsRef.current && !columnsRef.current.contains(e.target as Node)) setColumnsOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [columnsOpen])
 
   // URL rec 파라미터로 record 로드
   useEffect(() => {
@@ -217,10 +235,56 @@ export default function RecordsLayout() {
             <ScanSearch size={12} />
             점검
           </button>
+          <button
+            onClick={() => setRulesOpen(true)}
+            className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-300 px-2.5 py-1 hover:bg-gray-50 transition-colors shrink-0"
+          >
+            <Settings2 size={12} />
+            규칙
+          </button>
+          <div className="relative shrink-0" ref={columnsRef}>
+            <button
+              onClick={() => setColumnsOpen(o => !o)}
+              className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-300 px-2.5 py-1 hover:bg-gray-50 transition-colors"
+            >
+              <Columns3 size={12} />
+              컬럼 표시
+            </button>
+            {columnsOpen && (
+              <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-300 shadow-md py-1 min-w-[120px]">
+                {ALL_COLUMNS.map(col => (
+                  <button
+                    key={col}
+                    onClick={() => toggleColumn(col)}
+                    className="flex items-center gap-2 w-full px-3 py-1.5 text-left text-[11px] hover:bg-gray-50 transition-colors"
+                  >
+                    <span className={`w-3 shrink-0 ${visibleColumns.includes(col) ? 'text-gray-800' : 'text-transparent'}`}>✓</span>
+                    <span className={visibleColumns.includes(col) ? 'text-gray-800' : 'text-gray-400'}>
+                      {RECORD_COLUMN_LABELS[col]}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
 
         {/* 우: 액션 */}
         <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setConfirmReset('review')}
+            className="flex items-center gap-1.5 text-xs font-semibold text-red-400 border border-red-300 px-2.5 py-1 hover:bg-red-50 transition-colors"
+          >
+            <RotateCcw size={12} />
+            리뷰 초기화
+          </button>
+          <button
+            onClick={() => setConfirmReset('records')}
+            className="flex items-center gap-1.5 text-xs font-semibold text-red-400 border border-red-300 px-2.5 py-1 hover:bg-red-50 transition-colors"
+          >
+            <TrashIcon size={12} />
+            내역 초기화
+          </button>
           <button
             onClick={addRow}
             className="flex items-center gap-1.5 text-xs font-semibold text-gray-700 border border-gray-300 px-2.5 py-1 hover:bg-gray-50 transition-colors"
@@ -301,6 +365,7 @@ export default function RecordsLayout() {
           }
         }}
         onColumnSelect={() => {}}
+        visibleColumns={visibleColumns}
       />
 
       {modal === 'source' && (
@@ -326,7 +391,50 @@ export default function RecordsLayout() {
           records={filteredRecords}
           onComplete={handleReviewComplete}
           onClose={() => setModal('closed')}
+          onOpenRules={() => setRulesOpen(true)}
         />
+      )}
+
+      {rulesOpen && (
+        <RulesModal onClose={() => setRulesOpen(false)} />
+      )}
+
+      {confirmReset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/20">
+          <div className="bg-white w-[300px] border border-gray-300 shadow-xl flex flex-col">
+            <div className="px-5 py-4">
+              <p className="text-[13px] font-bold text-gray-800 mb-1">
+                {confirmReset === 'review' ? '리뷰 초기화' : '내역 초기화'}
+              </p>
+              <p className="text-[11px] text-gray-500 leading-relaxed">
+                {confirmReset === 'review'
+                  ? '이번달 모든 리뷰(만족·보통·후회)가 삭제됩니다. 저장 전까지는 되돌릴 수 없어요.'
+                  : '현재 내역이 모두 삭제됩니다. 저장 전까지는 되돌릴 수 없어요.'}
+              </p>
+            </div>
+            <div className="flex justify-end gap-2 px-4 py-3 border-t border-gray-200">
+              <button
+                onClick={() => setConfirmReset(null)}
+                className="text-xs font-semibold text-gray-500 border border-gray-300 px-3 py-1.5 hover:bg-gray-50 transition-colors"
+              >
+                취소
+              </button>
+              <button
+                onClick={() => {
+                  if (confirmReset === 'review') {
+                    setRecords(prev => prev.map(r => ({ ...r, review: null })))
+                  } else {
+                    setRecords([])
+                  }
+                  setConfirmReset(null)
+                }}
+                className="text-xs font-bold text-white bg-gray-900 px-3 py-1.5 hover:bg-gray-700 transition-colors"
+              >
+                초기화
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   )
