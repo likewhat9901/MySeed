@@ -13,6 +13,16 @@
 
 - **`GET /api/statistics`**: `led_id`·`category`(반복 시 OR)·`method`(합·평균) — JWT·`tb_record.data.amount` 집계(UUID는 `cate_id`, 문자열은 `data.category`)
 
+- **`POST /api/statistics/reduction/recompute`**: DB `tb_record` 기준으로 카테고리/사용자 필요도(`is_necessary`) 반영 `reduction_index` 재계산·저장
+
+- **`POST /api/statistics/reduction/necessity`**: 사용자 거래별 `data.need_type`(필요/불필요) 기록
+
+- **`GET /api/statistics/reduction/top-categories`**: 지출 카테고리별 평균 절감지수 Top3 — 응답은 카테고리·금액·지출 비중(%)만
+
+### Changed
+
+- **절감지수 저장**: `data`에 추가·갱신 키는 `need_type`·`reduction_index`만 (`is_necessary` 등 제거)
+
 ### Changed
 
 - **통계 `/api/statistics`**: `category` 쿼리 반복 시 OR로 합산, 응답 필드 `category` → `categories`(trim 목록)

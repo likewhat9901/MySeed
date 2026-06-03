@@ -110,7 +110,7 @@ def fetch_tb_record_rows_for_ledger(led_id: UUID, *, chunk_size: int = 500) -> l
     """
     특정 ledger의 tb_record 목록 조회(service role).
 
-    각 행: `data`, `cate_id` 등. PostgREST row 상한 때문에 range 로 순회합니다.
+    각 행: `rec_id`, `data`, `cate_id` 등. PostgREST row 상한 때문에 range 로 순회합니다.
     """
     client = _client()
     out: list[dict[str, Any]] = []
@@ -118,7 +118,7 @@ def fetch_tb_record_rows_for_ledger(led_id: UUID, *, chunk_size: int = 500) -> l
     while True:
         res = (
             client.table("tb_record")
-            .select("data,cate_id")
+            .select("rec_id,data,cate_id,data_type")
             .eq("led_id", str(led_id))
             .order("rec_id", desc=False)
             .range(offset, offset + chunk_size - 1)
@@ -132,6 +132,33 @@ def fetch_tb_record_rows_for_ledger(led_id: UUID, *, chunk_size: int = 500) -> l
             break
         offset += chunk_size
     return out
+
+
+def update_tb_record_data_fields(
+    led_id: UUID,
+    patches: list[dict[str, Any]],
+    *,
+    chunk_size: int = 200,
+) -> int:
+    """
+    rec_id별 data 전체(jsonb) 갱신.
+    patches 원소: {"rec_id": "<uuid>", "data": {...}}
+    반환: update 시도 건수.
+    """
+    if not patches:
+        return 0
+    client = _client()
+    n = 0
+    for i in range(0, len(patches), chunk_size):
+        batch = patches[i : i + chunk_size]
+        for p in batch:
+            rec_id = str(p.get("rec_id", "")).strip()
+            data = p.get("data")
+            if not rec_id or not isinstance(data, dict):
+                continue
+            client.table("tb_record").update({"data": data}).eq("led_id", str(led_id)).eq("rec_id", rec_id).execute()
+            n += 1
+    return n
 
 
 def insert_tb_records(rows: list[dict[str, Any]], *, chunk_size: int = 250) -> list[str]:

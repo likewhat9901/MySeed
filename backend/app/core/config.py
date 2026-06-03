@@ -56,8 +56,12 @@ def get_settings() -> Settings:
         openai_api_key=os.getenv("OPENAI_API_KEY") or None,
         openai_model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
         openai_base_url=base if base else None,
-        supabase_url=os.getenv("SUPABASE_URL") or None,
-        supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY") or None,
+        supabase_url=os.getenv("SUPABASE_URL")
+        or os.getenv("NEXT_PUBLIC_SUPABASE_URL")
+        or None,
+        supabase_service_role_key=os.getenv("SUPABASE_SERVICE_ROLE_KEY")
+        or os.getenv("SUPABASE_SERVICE_KEY")
+        or None,
         supabase_jwt_secret=os.getenv("SUPABASE_JWT_SECRET") or None,
         cors_origins=_parse_csv_list(os.getenv("CORS_ORIGINS"), _DEFAULT_CORS_ORIGINS),
         notion_oauth_client_id=os.getenv("NOTION_OAUTH_CLIENT_ID") or None,
