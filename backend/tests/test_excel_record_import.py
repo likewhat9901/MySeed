@@ -33,6 +33,25 @@ def test_build_record_rows_maps_headers() -> None:
     assert rows[0]["data"]["title"] == "식비"
 
 
+def test_negative_amount_stored_positive() -> None:
+    led = uuid4()
+    headers = ["날짜", "금액"]
+    data_rows = [["2026-01-02", -15000]]
+
+    rows, _ = build_record_rows(
+        led_id=led,
+        data_type="expense",
+        sheet="S",
+        header_row_1based=1,
+        headers=headers,
+        data_rows=data_rows,
+        column_map={"date": "날짜", "amount": "금액"},
+        file_id=None,
+    )
+    assert len(rows) == 1
+    assert rows[0]["data"]["amount"] == 15000.0
+
+
 def test_skip_empty_amount() -> None:
     led = uuid4()
     headers = ["날짜", "금액"]

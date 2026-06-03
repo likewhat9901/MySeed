@@ -65,3 +65,42 @@ def test_top_reduction_categories_response_shape() -> None:
     assert top["amount"] == 10000.0
     assert top["share_percent"] == 50.0
     assert "reduction_index" not in top
+
+
+def test_top_reduction_categories_period_filter() -> None:
+    rows = [
+        {
+            "rec_id": "a",
+            "data_type": "expense",
+            "data": {
+                "date": "2025-01-15",
+                "amount": 10000,
+                "category": "쇼핑",
+                "need_type": "불필요",
+                "reduction_index": 90,
+            },
+        },
+        {
+            "rec_id": "b",
+            "data_type": "expense",
+            "data": {
+                "date": "2025-06-15",
+                "amount": 5000,
+                "category": "식비",
+                "need_type": "필요",
+                "reduction_index": 10,
+            },
+        },
+    ]
+    from datetime import date
+
+    out = bri.compute_top_reduction_categories(
+        rows,
+        top_n=3,
+        period_start=date(2025, 1, 1),
+        period_end=date(2025, 3, 31),
+    )
+    assert out["expense_record_count"] == 1
+    assert out["total_expense_amount"] == 10000.0
+    assert len(out["items"]) == 1
+    assert out["items"][0]["category"] == "쇼핑"

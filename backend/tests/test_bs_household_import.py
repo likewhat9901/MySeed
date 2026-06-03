@@ -48,3 +48,21 @@ def test_build_maps_columns(monkeypatch) -> None:
     assert d["payment_method"] == "카드"
     assert d["memo"] == "메모1"
     assert d["source"] == "bsimport"
+
+
+def test_negative_amount_stored_positive(monkeypatch) -> None:
+    led = uuid4()
+    hdr = ["날짜", "시간", "타입", "대분류", "내용", "금액", "화폐", "결제수단", "메모"]
+
+    def fake_read(_excel_bytes: bytes):
+        return (
+            "가계부 내역",
+            1,
+            hdr,
+            [["2026-01-03", None, "지출", "식비", "점심", -12000, None, None, None]],
+        )
+
+    monkeypatch.setattr(bhi, "read_household_book_tabular", fake_read)
+
+    rows, _ = bhi.build_tb_rows_from_bs_household_excel(led_id=led, excel_bytes=b"x")
+    assert rows[0]["data"]["amount"] == 12000.0

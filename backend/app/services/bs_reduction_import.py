@@ -5,9 +5,11 @@ from __future__ import annotations
 import math
 import unicodedata
 from collections import defaultdict
+from datetime import date
 from typing import Any
 
 from app.services.excel_record_import import coerce_numeric_amount
+from app.services.record_period import record_in_date_range
 
 # 재계산 시 data에 추가·갱신하는 키만 이 둘
 DATA_KEY_NEED_TYPE = "need_type"
@@ -185,7 +187,7 @@ def reduction_index_for(
     else:
         score += 5.0
 
-    score += min(max(amount, 0.0) / 50000.0, 20.0)
+    score += min(abs(amount) / 50000.0, 20.0)
 
     cat_k = _norm_text(category)
     if any(k in cat_k for k in ("쇼핑", "문화", "여가", "외식", "카페", "취미")):
@@ -312,10 +314,13 @@ def compute_top_reduction_categories(
     rows: list[dict[str, Any]],
     *,
     top_n: int = 3,
+    period_start: date | None = None,
+    period_end: date | None = None,
 ) -> dict[str, Any]:
     """
     지출만 대상으로 카테고리별 평균 `reduction_index`로 정렬해 상위 N개.
     응답에는 지수 미포함 — 카테고리, 해당 카테고리 지출 합, 전체 지출 대비 비율(%).
+    `period_start`·`period_end`가 있으면 `data.date`가 그 범위(포함)인 행만 집계.
     """
     by_cat: dict[str, dict[str, float]] = defaultdict(
         lambda: {"index_sum": 0.0, "index_count": 0.0, "amount_sum": 0.0}
@@ -323,6 +328,10 @@ def compute_top_reduction_categories(
 
     for r in rows:
         if not is_expense_record(r):
+            continue
+        if period_start is not None and period_end is not None and not record_in_date_range(
+            r, period_start, period_end
+        ):
             continue
         data = r.get("data")
         if not isinstance(data, dict):
@@ -358,8 +367,20 @@ def compute_top_reduction_categories(
             }
         )
 
+    expense_rows_in_scope = sum(
+        1
+        for r in rows
+        if is_expense_record(r)
+        and (
+            period_start is None
+            or period_end is None
+            or record_in_date_range(r, period_start, period_end)
+        )
+    )
+
     return {
         "total_expense_amount": round(total_amount, 2),
         "items": items,
         "category_count": len(by_cat),
+        "expense_record_count": expense_rows_in_scope,
     }

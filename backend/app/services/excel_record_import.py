@@ -119,8 +119,11 @@ def column_index_from_header_label(headers: list[str], header_label: str | None)
 
 
 def coerce_numeric_amount(v: Any) -> float | None:
-    """엑셀·문자열을 금액(float)으로 정규화 (`build_record_rows`와 동일 규칙)."""
-    return _coerce_amount(v)
+    """엑셀·문자열을 금액(float)으로 정규화. tb_record 저장·집계 시 항상 양수(절댓값)."""
+    raw = _coerce_amount(v)
+    if raw is None:
+        return None
+    return abs(float(raw))
 
 
 def _looks_like_legacy_xls(content: bytes) -> bool:
@@ -299,7 +302,7 @@ def build_record_rows(
         excel_row_no = header_row_1based + 1 + offset
         padded = raw + [None] * max(0, len(headers) - len(raw))
 
-        amt = _coerce_amount(_cell(padded, ix_amount))
+        amt = coerce_numeric_amount(_cell(padded, ix_amount))
         if skip_empty_amount and (amt is None):
             continue
         if amt is None and not skip_empty_amount:

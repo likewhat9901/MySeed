@@ -11,6 +11,7 @@ from uuid import UUID
 from supabase import Client, create_client
 
 from app.core.config import get_settings
+from app.services.excel_record_import import coerce_numeric_amount
 
 logger = logging.getLogger(__name__)
 
@@ -267,6 +268,19 @@ def update_tb_record_data_fields(
     return _parallel_update_tb_record_data(led_id, compact, max_workers=max_workers)
 
 
+def _normalize_row_for_insert(row: dict[str, Any]) -> dict[str, Any]:
+    """insert 직전 `data.amount`를 양수로 통일."""
+    out = dict(row)
+    data = out.get("data")
+    if isinstance(data, dict) and "amount" in data:
+        amt = coerce_numeric_amount(data.get("amount"))
+        if amt is not None:
+            d = dict(data)
+            d["amount"] = amt
+            out["data"] = d
+    return out
+
+
 def insert_tb_records(rows: list[dict[str, Any]], *, chunk_size: int = 250) -> list[str]:
     """
     `tb_record` bulk insert (service role). Large payloads are chunked.
@@ -276,11 +290,12 @@ def insert_tb_records(rows: list[dict[str, Any]], *, chunk_size: int = 250) -> l
     """
     if not rows:
         return []
+    normalized = [_normalize_row_for_insert(r) for r in rows]
     all_ids: list[str] = []
     try:
         client = _client()
-        for i in range(0, len(rows), chunk_size):
-            batch = rows[i : i + chunk_size]
+        for i in range(0, len(normalized), chunk_size):
+            batch = normalized[i : i + chunk_size]
             res = client.table("tb_record").insert(batch).select("rec_id").execute()
             data = res.data
             # PostgREST는 보통 RETURNING 과 동일한 개수를 돌려주지만, 환경에 따라 빈 배열일 수 있음.
