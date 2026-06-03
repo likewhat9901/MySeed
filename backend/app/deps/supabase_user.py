@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import time
 from uuid import UUID
 
 import jwt
@@ -69,6 +70,42 @@ def supabase_user_id_from_access_token(access_token: str) -> UUID:
         raise HTTPException(status_code=401, detail="token의 sub 형식 오류") from e
 
 
+def mint_user_access_token(mem_id: UUID, *, ttl_seconds: int = 3600) -> str:
+    """ledger 소유자용 Supabase access_token 형식 JWT (Swagger 등 Bearer 생략 시)."""
+    s = get_settings()
+    secret = s.supabase_jwt_secret
+    if not secret or not secret.strip():
+        raise HTTPException(
+            status_code=503,
+            detail="SUPABASE_JWT_SECRET 미설정 — 자동 Bearer 발급 불가",
+        )
+    now = int(time.time())
+    payload = {
+        "sub": str(mem_id),
+        "aud": "authenticated",
+        "role": "authenticated",
+        "iat": now,
+        "exp": now + ttl_seconds,
+    }
+    return jwt.encode(payload, secret, algorithm="HS256")
+
+
+def resolve_access_token(led_id: UUID, authorization: str | None) -> str:
+    """Bearer 헤더가 없으면 led_id의 tb_ledger.mem_id로 access_token을 만든다."""
+    token = bearer_token_from_header(authorization)
+    if token:
+        return token
+    if not get_settings().supabase_configured():
+        raise HTTPException(
+            status_code=503,
+            detail="SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 필요",
+        )
+    owner = fetch_ledger_owner_mem_id(led_id)
+    if owner is None:
+        raise HTTPException(status_code=404, detail="ledger를 찾을 수 없습니다")
+    return mint_user_access_token(owner)
+
+
 def require_supabase_user_id(authorization: str | None) -> UUID:
     raw = bearer_token_from_header(authorization)
     if raw is None:
@@ -81,30 +118,12 @@ def require_supabase_user_id(authorization: str | None) -> UUID:
 
 def require_ledger_actor(led_id: UUID, authorization: str | None) -> UUID:
     """
-    가계부 API용 actor(mem_id) 해석.
+    가계부 API용 actor(mem_id).
 
-    1) `Authorization: Bearer` 있으면 JWT 검증 후 ledger 소유 여부 확인.
-    2) 없고 `ALLOW_SWAGGER_LED_ID_AUTH=true` 이면 led_id로 tb_ledger.mem_id 조회(로컬 Swagger용).
+    Bearer 없으면 led_id로 tb_ledger.mem_id를 조회해 access_token을 발급·검증한다.
     """
-    settings = get_settings()
-    token = bearer_token_from_header(authorization)
-    if token:
-        mem_id = supabase_user_id_from_access_token(token)
-        if not ledger_belongs_to_member(led_id, mem_id):
-            raise HTTPException(status_code=403, detail="이 가계부(ledger)에 대한 권한이 없습니다")
-        return mem_id
-
-    if settings.allow_swagger_led_id_auth and settings.supabase_configured():
-        owner = fetch_ledger_owner_mem_id(led_id)
-        if owner is None:
-            raise HTTPException(status_code=404, detail="ledger를 찾을 수 없습니다")
-        return owner
-
-    raise HTTPException(
-        status_code=401,
-        detail=(
-            "Authorization: Bearer <access token> 이 필요합니다. "
-            "로컬 Swagger만 led_id로 테스트하려면 backend/.env 에 "
-            "ALLOW_SWAGGER_LED_ID_AUTH=true 를 넣으세요."
-        ),
-    )
+    token = resolve_access_token(led_id, authorization)
+    mem_id = supabase_user_id_from_access_token(token)
+    if not ledger_belongs_to_member(led_id, mem_id):
+        raise HTTPException(status_code=403, detail="이 가계부(ledger)에 대한 권한이 없습니다")
+    return mem_id

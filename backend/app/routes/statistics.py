@@ -63,8 +63,7 @@ class LedgerStatisticsResponse(BaseModel):
     "/statistics",
     summary="가계부(tb_record) 금액 합 또는 평균",
     description=(
-        "**Authorization: Bearer** (선택, 로컬은 `ALLOW_SWAGGER_LED_ID_AUTH=true` 시 `led_id`만으로 가능). "
-        "`mem_id`는 토큰 `sub` 또는 ledger 소유자 조회로 확인합니다. "
+        "**Authorization: Bearer** 생략 가능 — `led_id`만 넣으면 서버가 ledger 소유자 access_token을 자동 사용합니다. "
         "`category` 없음 또는 빈 목록 또는 공백만: 전체 내역 집계. "
         "**`category` 같은 키를 여러 번 보내면**(예: `?category=식비&category=교통`) "
         "그 중 하나에라도 해당하는 레코드를 **합쳐서** 합·평균합니다(OR). "
@@ -86,7 +85,7 @@ async def get_ledger_statistics(
     ),
     authorization: Annotated[
         str | None,
-        Header(description="Bearer 선택(로컬은 ALLOW_SWAGGER_LED_ID_AUTH=true 시 생략 가능)"),
+        Header(description="Bearer 생략 가능(led_id로 소유자 토큰 자동 발급)"),
     ] = None,
 ) -> LedgerStatisticsResponse:
     settings = get_settings()
@@ -144,7 +143,7 @@ async def get_top_reduction_categories(
     limit: int = Query(3, ge=1, le=10, description="상위 N개 (기본 3)"),
     authorization: Annotated[
         str | None,
-        Header(description="Bearer 선택(로컬은 ALLOW_SWAGGER_LED_ID_AUTH=true 시 생략 가능)"),
+        Header(description="Bearer 생략 가능(led_id로 소유자 토큰 자동 발급)"),
     ] = None,
 ) -> TopReductionCategoriesResponse:
     settings = get_settings()

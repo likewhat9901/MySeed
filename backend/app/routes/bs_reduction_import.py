@@ -43,7 +43,7 @@ class RecordNecessityUpdateBody(BaseModel):
         "저장 시 `data`에 추가·갱신하는 키는 **`need_type`**, **`reduction_index`** (지출만). "
         "수입(income) 거래는 해당 키를 제거합니다. "
         "필요/불필요는 사용자가 기록한 `need_type`을 사용하고, 없으면 기본 `필요`입니다. "
-        "로컬 Swagger: `ALLOW_SWAGGER_LED_ID_AUTH=true` 이면 Bearer 없이 `led_id`만으로 호출 가능."
+        "Bearer 생략 시 `led_id`로 소유자 access_token 자동 사용."
     ),
     response_model=BsReductionImportResponse,
 )
@@ -51,7 +51,7 @@ async def recompute_reduction_from_db(
     led_id: UUID = Query(..., description="tb_ledger.led_id"),
     authorization: str | None = Header(
         None,
-        description="Bearer 선택(로컬은 ALLOW_SWAGGER_LED_ID_AUTH=true 시 생략 가능)",
+        description="Bearer 생략 가능(led_id로 소유자 토큰 자동 발급)",
     ),
 ) -> BsReductionImportResponse:
     settings = get_settings()
@@ -89,7 +89,7 @@ async def set_record_necessity(
     led_id: UUID = Query(..., description="tb_ledger.led_id"),
     authorization: str | None = Header(
         None,
-        description="Bearer 선택(로컬은 ALLOW_SWAGGER_LED_ID_AUTH=true 시 생략 가능)",
+        description="Bearer 생략 가능(led_id로 소유자 토큰 자동 발급)",
     ),
 ) -> dict:
     settings = get_settings()

@@ -33,9 +33,6 @@ class Settings:
     notion_oauth_redirect_uri: str | None
     notion_oauth_frontend_result_url: str | None
 
-    # Swagger 등: Bearer 없이 led_id만 넣어도 tb_ledger.mem_id로 소유자 검증 (로컬 전용, 운영 OFF)
-    allow_swagger_led_id_auth: bool
-
     def supabase_configured(self) -> bool:
         return bool(self.supabase_url and self.supabase_service_role_key)
 
@@ -74,6 +71,4 @@ def get_settings() -> Settings:
             "NOTION_OAUTH_FRONTEND_RESULT_URL"
         )
         or "http://localhost:3000/dev/notion-oauth/result",
-        allow_swagger_led_id_auth=os.getenv("ALLOW_SWAGGER_LED_ID_AUTH", "").strip().lower()
-        in ("1", "true", "yes", "on"),
     )
