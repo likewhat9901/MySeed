@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import logging
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any
 from uuid import UUID
 
@@ -153,31 +155,116 @@ def fetch_tb_record_rows_for_ledger(led_id: UUID, *, chunk_size: int = 500) -> l
     return out
 
 
+def _normalize_data_patches(patches: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = []
+    for p in patches:
+        rec_id = str(p.get("rec_id", "")).strip()
+        data = p.get("data")
+        if rec_id and isinstance(data, dict):
+            out.append({"rec_id": rec_id, "data": data})
+    return out
+
+
+def _rpc_bulk_update_tb_record_data(led_id: UUID, patches: list[dict[str, Any]]) -> int:
+    """PostgREST RPC bulk_update_tb_record_data — 배포되어 있으면 1~수 회 왕복으로 끝."""
+    payload = [{"rec_id": p["rec_id"], "data": p["data"]} for p in patches]
+    res = _client().rpc(
+        "bulk_update_tb_record_data",
+        {"p_led_id": str(led_id), "p_patches": payload},
+    ).execute()
+    data = res.data
+    if isinstance(data, int):
+        return data
+    if isinstance(data, list) and data:
+        first = data[0]
+        if isinstance(first, int):
+            return first
+        if isinstance(first, dict) and "count" in first:
+            return int(first["count"])
+    return len(patches)
+
+
+def _rpc_bulk_update_available() -> bool:
+    try:
+        _rpc_bulk_update_tb_record_data(UUID(int=0), [])
+        return True
+    except Exception as e:
+        msg = str(e).lower()
+        if "bulk_update_tb_record_data" in msg or "pgrst202" in msg or "42883" in msg:
+            return False
+        raise
+
+
+_thread_local = threading.local()
+
+
+def _patch_worker_init() -> None:
+    s = get_settings()
+    if not s.supabase_url or not s.supabase_service_role_key:
+        raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY must be set")
+    _thread_local.client = create_client(s.supabase_url, s.supabase_service_role_key)
+
+
+def _patch_one_row(led_id: str, rec_id: str, data: dict[str, Any]) -> None:
+    client = getattr(_thread_local, "client", None) or _client()
+    client.table("tb_record").update({"data": data}).eq("led_id", led_id).eq("rec_id", rec_id).execute()
+
+
+def _parallel_update_tb_record_data(
+    led_id: UUID,
+    patches: list[dict[str, Any]],
+    *,
+    max_workers: int = 24,
+) -> int:
+    led = str(led_id)
+    n = 0
+    with ThreadPoolExecutor(max_workers=max_workers, initializer=_patch_worker_init) as pool:
+        futures = [
+            pool.submit(_patch_one_row, led, p["rec_id"], p["data"]) for p in patches
+        ]
+        for fut in as_completed(futures):
+            fut.result()
+            n += 1
+    return n
+
+
 def update_tb_record_data_fields(
     led_id: UUID,
     patches: list[dict[str, Any]],
     *,
-    chunk_size: int = 200,
+    rpc_chunk_size: int = 400,
+    max_workers: int = 24,
 ) -> int:
     """
     rec_id별 data 전체(jsonb) 갱신.
     patches 원소: {"rec_id": "<uuid>", "data": {...}}
     반환: update 시도 건수.
+
+    우선 Supabase RPC `bulk_update_tb_record_data`(supabase/bulk_update_tb_record_data.sql) 사용.
+    미배포 시 스레드 풀 병렬 UPDATE(건당 순차보다 빠름, 프록시 타임아웃 완화).
     """
-    if not patches:
+    compact = _normalize_data_patches(patches)
+    if not compact:
         return 0
-    client = _client()
-    n = 0
-    for i in range(0, len(patches), chunk_size):
-        batch = patches[i : i + chunk_size]
-        for p in batch:
-            rec_id = str(p.get("rec_id", "")).strip()
-            data = p.get("data")
-            if not rec_id or not isinstance(data, dict):
-                continue
-            client.table("tb_record").update({"data": data}).eq("led_id", str(led_id)).eq("rec_id", rec_id).execute()
-            n += 1
-    return n
+
+    try:
+        total = 0
+        for i in range(0, len(compact), rpc_chunk_size):
+            total += _rpc_bulk_update_tb_record_data(led_id, compact[i : i + rpc_chunk_size])
+        logger.info("bulk_update_tb_record_data RPC: %s rows for led_id=%s", total, led_id)
+        return total
+    except Exception as e:
+        msg = str(e).lower()
+        if "bulk_update_tb_record_data" not in msg and "pgrst202" not in msg and "42883" not in msg:
+            logger.exception("bulk_update_tb_record_data RPC failed")
+            raise
+
+    logger.warning(
+        "bulk_update_tb_record_data RPC 없음 — 병렬 row UPDATE로 폴백(led_id=%s, n=%s)",
+        led_id,
+        len(compact),
+    )
+    return _parallel_update_tb_record_data(led_id, compact, max_workers=max_workers)
 
 
 def insert_tb_records(rows: list[dict[str, Any]], *, chunk_size: int = 250) -> list[str]:
