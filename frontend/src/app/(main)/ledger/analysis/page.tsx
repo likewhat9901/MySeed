@@ -418,8 +418,10 @@ export default function AnalysisPage() {
                             {timeStats.map(t => (
                               <div key={t.label} className="flex items-center justify-between text-[11px]">
                                 <span className="text-gray-600">{t.label}</span>
-                                <span className="text-gray-800 font-semibold tabular-nums shrink-0 ml-2">
-                                  {t.count}건 {fmtW(t.amount)}
+                                <span className="tabular-nums shrink-0 ml-2">
+                                  <span className="text-gray-500">{t.count}건</span>
+                                  <span className="text-gray-300 mx-1">·</span>
+                                  <span className="text-gray-800 font-semibold">{fmtW(t.amount)}</span>
                                 </span>
                               </div>
                             ))}
