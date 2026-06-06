@@ -1,13 +1,13 @@
-// /ledger/goals2 — 목표 탭 (사무적 디자인 비교용)
+// /ledger/goals — 목표 탭 (모으기 목표 + 이번달 다짐 + 월말 회고)
 'use client'
 
 import { useMemo } from 'react'
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
 import { useLedgerContext } from '../_context/LedgerContext'
-import SavingsGoalSection from '../overview/_components/goal/SavingsGoalSection'
-import ResolutionSection from '../goals/_components/ResolutionSection'
-import RetrospectiveSection from '../goals/_components/RetrospectiveSection'
+import SavingsGoalSection from './_components/SavingsGoalSection'
+import ResolutionSection from './_components/ResolutionSection'
+import RetrospectiveSection from './_components/RetrospectiveSection'
 
 function shiftMonth(ym: string, delta: number): string {
   const [y, m] = ym.split('-').map(Number)

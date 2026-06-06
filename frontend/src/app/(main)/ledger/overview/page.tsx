@@ -1,4 +1,4 @@
-// /ledger/overview2 — 현황 (사무적 디자인 비교용)
+// /ledger/overview — 현황 대시보드 (요약 / 지출 쪼개기 / 후회 분석 / 추이)
 'use client'
 
 import { useEffect, useMemo, useRef, useState } from 'react'
@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useLedgerContext } from '../_context/LedgerContext'
 import { getRecord } from '@/features/ledger/record/rpc'
-import TrendLineSection from '../overview/_components/overview/TrendLineSection'
+import TrendLineSection from './_components/overview/TrendLineSection'
 
 type ViewMode = 'month' | 'year'
 
@@ -15,7 +15,7 @@ const CATEGORY_COLORS = [
   '#14b8a6','#f43f5e','#64748b','#84cc16',
 ]
 
-/* ── 예산 패널 (overview2 전용 사무 스타일) ── */
+/* ── 예산 패널 (사무 스타일) ── */
 interface CategoryItem { label: string; amount: number; color: string }
 
 function BudgetPanel({ expense, categoryItems, daysLeft, viewMode }: {
@@ -355,64 +355,6 @@ export default function Overview2Page() {
     return { avgPerDay, projected, elapsedDays, daysLeft, totalDays, isCurrent }
   }, [expense, activeMonth, viewMode])
 
-  /* 후회 집계 + 패턴 분석 */
-  const { regretTotal, regretCount, regretPct, prevRegret, regretItems, categoryStats, timeStats, paymentStats } = useMemo(() => {
-    const DOW = ['일', '월', '화', '수', '목', '금', '토']
-    let regretTotal = 0, regretCount = 0
-    const regretItems: typeof filteredRecords = []
-    const catStat  = new Map<string, { total: number; regret: number; regretAmt: number }>()
-    const timeStat = new Map<string, { label: string; count: number; amount: number }>()
-    const payStat  = new Map<string, { total: number; regret: number }>()
-
-    for (const r of filteredRecords) {
-      if (r.type !== '지출' || r.amount <= 0) continue
-      const k = r.category || '기타'
-      const cur = catStat.get(k) ?? { total: 0, regret: 0, regretAmt: 0 }
-      cur.total++
-      const pk = r.paymentMethod || '미상'
-      const pc = payStat.get(pk) ?? { total: 0, regret: 0 }
-      pc.total++
-      if (r.review === 'bad') {
-        regretTotal += r.amount; regretCount++; regretItems.push(r)
-        cur.regret++; cur.regretAmt += r.amount
-        pc.regret++
-        const d = new Date(r.date)
-        const dow = DOW[d.getDay()]
-        const hh = r.time ? Number(r.time.slice(0, 2)) : -1
-        const band = hh < 0 ? '시간미상' : hh < 6 ? '새벽' : hh < 12 ? '오전' : hh < 18 ? '오후' : hh < 22 ? '저녁' : '심야'
-        const isWe = d.getDay() === 0 || d.getDay() === 6
-        const tk = isWe ? `주말 ${band}` : `${dow} ${band}`
-        const tc = timeStat.get(tk) ?? { label: tk, count: 0, amount: 0 }
-        tc.count++; tc.amount += r.amount; timeStat.set(tk, tc)
-      }
-      catStat.set(k, cur); payStat.set(pk, pc)
-    }
-    const regretPct = expense > 0 ? Math.round((regretTotal / expense) * 100) : 0
-
-    let prevRegret = 0
-    if (viewMode === 'month' && activeMonth) {
-      const prev = shiftMonth(activeMonth, -1)
-      for (const r of records) {
-        if (r.type === '지출' && r.review === 'bad' && r.date.startsWith(prev)) prevRegret += r.amount
-      }
-    }
-
-    const categoryStats = Array.from(catStat.entries())
-      .filter(([, v]) => v.regret > 0)
-      .map(([label, v]) => ({ label, ratio: v.regret / v.total, regret: v.regret, total: v.total, regretAmt: v.regretAmt }))
-      .sort((a, b) => b.ratio - a.ratio).slice(0, 3)
-
-    const timeStats = Array.from(timeStat.values())
-      .sort((a, b) => b.count - a.count).slice(0, 3)
-
-    const paymentStats = Array.from(payStat.entries())
-      .filter(([, v]) => v.total >= 2)
-      .map(([label, v]) => ({ label, ratio: v.regret / v.total, regret: v.regret, total: v.total }))
-      .sort((a, b) => b.ratio - a.ratio).slice(0, 3)
-
-    return { regretTotal, regretCount, regretPct, prevRegret, regretItems, categoryStats, timeStats, paymentStats }
-  }, [filteredRecords, expense, records, activeMonth, viewMode])
-
   /* 고정 vs 변동 */
   const { fixedTotal, varTotal, fixedCount, varCount, fixedTop, varTop } = useMemo(() => {
     const fixed: typeof filteredRecords = []
@@ -444,7 +386,6 @@ export default function Overview2Page() {
 
   const vsExpense = viewMode === 'month' ? pctDelta(expense, prevMonthExpense) : null
   const vsIncome  = viewMode === 'month' ? pctDelta(income,  prevMonthIncome)  : null
-  const vsRegret  = prevRegret > 0       ? pctDelta(regretTotal, prevRegret)   : null
 
   const expenseCount  = filteredRecords.filter(r => r.type === '지출').length
 
@@ -730,103 +671,6 @@ export default function Overview2Page() {
                 )}
               </div>
 
-            </div>
-          </div>
-
-          {/* ── REGRET ANALYSIS ── */}
-          <div>
-            <SectionLabel label="Regret Analysis — 후회 소비" />
-            <div className="bg-white border border-gray-300">
-              {regretCount === 0 ? (
-                <div className="px-5 py-4 text-xs text-gray-400">
-                  후회로 표시된 지출이 없습니다. 내역에서 😞를 체크하면 여기서 분석됩니다.
-                </div>
-              ) : (
-                <>
-                  {/* 핵심 지표 */}
-                  <div className="grid grid-cols-3 divide-x divide-gray-200 border-b border-gray-200">
-                    <MetricCell
-                      label="후회 총액"
-                      value={fmtW(regretTotal)}
-                      badge={vsRegret != null ? `${vsRegret <= 0 ? '▼' : '▲'}${Math.abs(vsRegret)}% vs 전월` : undefined}
-                      badgeGood={vsRegret != null && vsRegret <= 0}
-                    />
-                    <MetricCell label="비중" value={`${regretPct}%`} sub="전체 지출 대비" />
-                    <MetricCell label="건수" value={`${regretCount}건`}
-                      sub={prevRegret > 0 ? `전월 ${fmtW(prevRegret)}` : undefined} />
-                  </div>
-
-                  {/* 패턴 분석 3열 */}
-                  <div className="grid grid-cols-3 divide-x divide-gray-200 border-b border-gray-200">
-                    {/* 카테고리 */}
-                    <div className="px-4 py-3">
-                      <p className="text-[9px] font-bold tracking-widest uppercase text-gray-400 mb-2">📍 Category</p>
-                      {categoryStats.length === 0 ? (
-                        <p className="text-[11px] text-gray-300">—</p>
-                      ) : categoryStats.map(c => (
-                        <div key={c.label} className="border-b border-gray-100 py-1.5">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-gray-700 truncate mr-2">{c.label}</span>
-                            <span className="text-red-500 font-semibold tabular-nums shrink-0">{Math.round(c.ratio * 100)}%</span>
-                          </div>
-                          <p className="text-[10px] text-gray-400 tabular-nums">{c.total}건 중 {c.regret}건 · {fmtShort(c.regretAmt)}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* 시간대 */}
-                    <div className="px-4 py-3">
-                      <p className="text-[9px] font-bold tracking-widest uppercase text-gray-400 mb-2">🕐 Time Pattern</p>
-                      {timeStats.length === 0 ? (
-                        <p className="text-[11px] text-gray-300">—</p>
-                      ) : timeStats.map(t => (
-                        <div key={t.label} className="border-b border-gray-100 py-1.5">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-gray-700 truncate mr-2">{t.label}</span>
-                            <span className="text-gray-800 font-semibold tabular-nums shrink-0">{t.count}건</span>
-                          </div>
-                          <p className="text-[10px] text-gray-400 tabular-nums">{fmtW(t.amount)}</p>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* 결제수단 */}
-                    <div className="px-4 py-3">
-                      <p className="text-[9px] font-bold tracking-widest uppercase text-gray-400 mb-2">💳 Payment</p>
-                      {paymentStats.length === 0 ? (
-                        <p className="text-[11px] text-gray-300">—</p>
-                      ) : paymentStats.map(p => (
-                        <div key={p.label} className="border-b border-gray-100 py-1.5">
-                          <div className="flex items-center justify-between text-[11px]">
-                            <span className="text-gray-700 truncate mr-2">{p.label}</span>
-                            <span className="text-red-500 font-semibold tabular-nums shrink-0">{Math.round(p.ratio * 100)}%</span>
-                          </div>
-                          <p className="text-[10px] text-gray-400">{p.total}건 중 {p.regret}건</p>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {/* 후회 내역 리스트 */}
-                  <div className="px-5 py-3">
-                    <div className="border-b border-gray-200 pb-0.5 mb-2">
-                      <p className="text-[9px] font-bold tracking-widest uppercase text-gray-400">Regret Items</p>
-                    </div>
-                    <div className="flex flex-col max-h-48 overflow-y-auto">
-                      {[...regretItems]
-                        .sort((a, b) => b.amount - a.amount)
-                        .map((r, i) => (
-                          <div key={r.id ?? i} className="flex items-center gap-3 border-b border-gray-100 py-1.5">
-                            <span className="text-[10px] text-gray-400 tabular-nums shrink-0 w-12">{r.date.slice(5)}</span>
-                            <span className="text-[11px] text-gray-700 truncate flex-1 min-w-0">{r.description || r.category || '(내용 없음)'}</span>
-                            <span className="text-[10px] text-gray-400 shrink-0">{r.category}</span>
-                            <span className="text-[11px] font-semibold text-red-500 tabular-nums shrink-0">{fmtShort(r.amount)}</span>
-                          </div>
-                        ))}
-                    </div>
-                  </div>
-                </>
-              )}
             </div>
           </div>
 

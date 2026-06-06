@@ -2,7 +2,7 @@
 'use client'
 
 import { createContext, useContext, useState } from 'react'
-import { useLedgerPersist } from '../overview/_hooks/useLedgerPersist'
+import { useLedgerPersist } from '../_hooks/useLedgerPersist'
 import type { LedgerRecord } from '@/features/ledger/record/types'
 
 interface LedgerContextValue {
