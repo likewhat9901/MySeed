@@ -465,9 +465,9 @@ export default function AnalysisPage() {
                       <span>#</span>
                       <span className="truncate">카테고리</span>
                       <span className="text-right">건수</span>
-                      <span className="truncate">후회 빈도</span>
+                      <span className="truncate text-center">후회 빈도</span>
                       <span className="text-right">금액</span>
-                      <span className="truncate">후회 금액</span>
+                      <span className="truncate text-center">후회 금액</span>
                       <span className="text-right">점수</span>
                     </div>
                     {(() => {
