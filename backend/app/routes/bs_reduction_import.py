@@ -14,7 +14,9 @@ from app.deps.supabase_user import require_ledger_actor
 from app.services.bs_reduction_import import (
     DATA_KEY_NEED_TYPE,
     compute_reduction_for_records,
+    expense_category_label,
     is_expense_record,
+    is_index_skipped_category,
 )
 from app.services.supabase_data import (
     fetch_tb_record_rows_for_ledger,
@@ -32,7 +34,17 @@ class BsReductionImportResponse(BaseModel):
 
 class RecordNecessityUpdateBody(BaseModel):
     rec_id: UUID = Field(description="tb_record.rec_id")
-    need_type: Literal["필요", "불필요"] = Field(description="사용자 판단 필요/불필요")
+    need_type: Literal["만족", "불만족"] = Field(description="소비 만족도(구 필요/불필요)")
+
+
+class RecomputeReductionBody(BaseModel):
+    budgets: dict[str, float] = Field(
+        default_factory=dict,
+        description="카테고리별 월 목표 소비 금액. 예: {\"식비\": 300000}",
+    )
+    base_weight: float = Field(0.5, ge=0.0, le=1.0, description="첫 달 카테고리 가중치")
+    weight_step: float = Field(0.3, ge=0.0, le=1.0, description="전월 need_type(만족/불만족) 비율 차이 → 가중치 변화량")
+    budget_max_points: float = Field(30.0, ge=0.0, le=100.0, description="버짓 초과 시 최대 가산 점수")
 
 
 @router.post(
@@ -42,13 +54,15 @@ class RecordNecessityUpdateBody(BaseModel):
         "DB(`tb_record`)를 조회해 `data.reduction_index`를 재계산합니다. "
         "저장 시 `data`에 추가·갱신하는 키는 **`need_type`**, **`reduction_index`** (지출만). "
         "수입(income) 거래는 해당 키를 제거합니다. "
-        "필요/불필요는 사용자가 기록한 `need_type`을 사용하고, 없으면 기본 `필요`입니다. "
+        "**카테고리 가중치**: 첫 달 `base_weight`(기본 0.5), 다음 달부터 전월 **`need_type`(만족/불만족)** "
+        "비율로 ±(불만족↑→가중치↑). **버짓** 초과 시 해당 월 거래 지수에 가산. "
         "Bearer 생략 시 `led_id`로 소유자 access_token 자동 사용."
     ),
     response_model=BsReductionImportResponse,
 )
 async def recompute_reduction_from_db(
     led_id: UUID = Query(..., description="tb_ledger.led_id"),
+    payload: RecomputeReductionBody = Body(default_factory=RecomputeReductionBody),
     authorization: str | None = Header(
         None,
         description="Bearer 생략 가능(led_id로 소유자 토큰 자동 발급)",
@@ -65,7 +79,13 @@ async def recompute_reduction_from_db(
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"조회 실패: {e!s}") from e
 
-    patches, category_summary, warns = compute_reduction_for_records(rows)
+    patches, category_summary, warns = compute_reduction_for_records(
+        rows,
+        budgets=payload.budgets or None,
+        base_weight=payload.base_weight,
+        weight_step=payload.weight_step,
+        budget_max_points=payload.budget_max_points,
+    )
     if not patches:
         return BsReductionImportResponse(updated=0, category_summary=category_summary, warnings=warns)
     try:
@@ -81,8 +101,8 @@ async def recompute_reduction_from_db(
 
 @router.post(
     "/statistics/reduction/necessity",
-    summary="사용자 필요/불필요 기록 저장",
-    description="지출 거래만 `data.need_type` 저장 (`필요` | `불필요`). 수입은 400.",
+    summary="사용자 소비 만족도(need_type) 기록",
+    description="지출 거래만 `data.need_type` 저장 (`만족` | `불만족`). 수입·미분류는 400.",
 )
 async def set_record_necessity(
     payload: RecordNecessityUpdateBody = Body(...),
@@ -101,10 +121,13 @@ async def set_record_necessity(
     if not target or not isinstance(target.get("data"), dict):
         raise HTTPException(status_code=404, detail="rec_id를 ledger에서 찾지 못했습니다")
     if not is_expense_record(target):
-        raise HTTPException(status_code=400, detail="지출 거래만 필요/불필요를 기록할 수 있습니다")
+        raise HTTPException(status_code=400, detail="지출 거래만 need_type을 기록할 수 있습니다")
+    if is_index_skipped_category(expense_category_label(target["data"])):
+        raise HTTPException(status_code=400, detail="미분류 카테고리는 need_type·지수 대상이 아닙니다")
 
     d = dict(target["data"])
     d[DATA_KEY_NEED_TYPE] = payload.need_type
+    d.pop("satisfaction", None)
     for legacy in ("is_necessary", "necessity_confidence", "category_auto_assigned"):
         d.pop(legacy, None)
     update_tb_record_data_fields(led_id, [{"rec_id": str(payload.rec_id), "data": d}])

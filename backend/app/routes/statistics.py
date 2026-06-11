@@ -6,12 +6,19 @@ from typing import Annotated, Any
 
 from uuid import UUID
 
-from fastapi import APIRouter, Header, HTTPException, Query
+from fastapi import APIRouter, Body, Header, HTTPException, Query
 from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
 from app.deps.supabase_user import require_ledger_actor
 from app.services.bs_reduction_import import compute_top_reduction_categories
+from app.services.consumption_analysis import DEFAULT_ALPHA, analyze_consumption
+from app.services.dynamic_reduction import (
+    DEFAULT_BASE_WEIGHT,
+    DEFAULT_BUDGET_MAX_POINTS,
+    DEFAULT_WEIGHT_STEP,
+    compute_dynamic_reduction,
+)
 from app.services.record_period import ResolvedPeriod, parse_period_kind, resolve_period_range
 from app.services.record_statistics import compute_led_statistics, parse_stat_method
 from app.services.supabase_data import fetch_tb_record_rows_for_ledger
@@ -225,3 +232,130 @@ async def get_top_reduction_categories(
         total_expense_amount=result["total_expense_amount"],
         items=[TopReductionCategoryItem(**x) for x in result["items"]],
     )
+
+
+class DynamicReductionBody(BaseModel):
+    budgets: dict[str, float] = Field(
+        default_factory=dict,
+        description="카테고리별 월 목표 소비 금액. 예: {\"식비\": 300000, \"쇼핑\": 100000}",
+    )
+    base_weight: float = Field(
+        DEFAULT_BASE_WEIGHT, ge=0.0, le=1.0, description="첫 달 카테고리 가중치(기본 0.5)"
+    )
+    weight_step: float = Field(
+        DEFAULT_WEIGHT_STEP,
+        ge=0.0,
+        le=1.0,
+        description="만족/후회 비율 차이가 가중치에 주는 최대 변화량(기본 0.3)",
+    )
+    budget_max_points: float = Field(
+        DEFAULT_BUDGET_MAX_POINTS,
+        ge=0.0,
+        le=100.0,
+        description="버짓 초과 시 지수에 더할 수 있는 최대 점수(기본 30)",
+    )
+
+
+@router.post(
+    "/statistics/reduction/dynamic-index",
+    summary="카테고리×월 가중치·버짓 보너스 미리보기",
+    description=(
+        "recompute에 쓰이는 **카테고리×월 가중치·버짓 보너스**만 조회합니다. "
+        "실제 거래별 `reduction_index`는 `POST /statistics/reduction/recompute`로 계산·저장합니다."
+    ),
+)
+async def get_dynamic_reduction_index(
+    led_id: UUID = Query(..., description="tb_ledger.led_id"),
+    payload: DynamicReductionBody = Body(default_factory=DynamicReductionBody),
+    authorization: Annotated[
+        str | None,
+        Header(description="Bearer 생략 가능(led_id로 소유자 토큰 자동 발급)"),
+    ] = None,
+) -> dict[str, Any]:
+    settings = get_settings()
+    if not settings.supabase_configured():
+        raise HTTPException(status_code=503, detail="SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 필요")
+
+    try:
+        require_ledger_actor(led_id, authorization)
+        rows = fetch_tb_record_rows_for_ledger(led_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"조회 실패: {e!s}") from e
+
+    result = compute_dynamic_reduction(
+        rows,
+        budgets=payload.budgets or None,
+        base_weight=payload.base_weight,
+        weight_step=payload.weight_step,
+        budget_max_points=payload.budget_max_points,
+    )
+    if not result["categories"]:
+        raise HTTPException(status_code=422, detail="날짜·금액이 있는 지출 내역이 없습니다")
+
+    return {"led_id": str(led_id), **result}
+
+
+class ConsumptionAnalysisBody(BaseModel):
+    budgets: dict[str, float] = Field(
+        default_factory=dict,
+        description='카테고리별 월 예산. 예: {"식사": 300000, "간식": 50000}',
+    )
+    alpha: float = Field(
+        DEFAULT_ALPHA,
+        ge=0.0,
+        le=5.0,
+        description="후회율→카테고리 가중치 민감도 (기본 1.0)",
+    )
+    month: str | None = Field(
+        default=None,
+        description='분석 대상 월 "YYYY-MM". 미지정 시 전체 기간',
+        examples=["2026-06"],
+    )
+
+
+@router.post(
+    "/statistics/consumption-analysis",
+    summary="가계부 소비지수 분석",
+    description=(
+        "거래별 **소비지수(score)** 와 카테고리×월 **금액 가중 지수**를 계산합니다. "
+        "score = amountScore × regretScore × categoryWeight × budgetPressure. "
+        "후회(regret)는 `data.need_type` **불만족**으로 판단합니다. "
+        "미분류·수입은 제외."
+    ),
+)
+async def post_consumption_analysis(
+    led_id: UUID = Query(..., description="tb_ledger.led_id"),
+    payload: ConsumptionAnalysisBody = Body(default_factory=ConsumptionAnalysisBody),
+    authorization: Annotated[
+        str | None,
+        Header(description="Bearer 생략 가능(led_id로 소유자 토큰 자동 발급)"),
+    ] = None,
+) -> dict[str, Any]:
+    settings = get_settings()
+    if not settings.supabase_configured():
+        raise HTTPException(status_code=503, detail="SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 필요")
+
+    month = payload.month.strip() if payload.month else None
+    if month and len(month) != 7:
+        raise HTTPException(status_code=400, detail='month는 "YYYY-MM" 형식이어야 합니다')
+
+    try:
+        require_ledger_actor(led_id, authorization)
+        rows = fetch_tb_record_rows_for_ledger(led_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"조회 실패: {e!s}") from e
+
+    result = analyze_consumption(
+        rows,
+        budgets=payload.budgets or None,
+        alpha=payload.alpha,
+        month_filter=month,
+    )
+    if not result["transactions"]:
+        raise HTTPException(status_code=422, detail="분석 가능한 지출 내역이 없습니다")
+
+    return {"led_id": str(led_id), **result}
