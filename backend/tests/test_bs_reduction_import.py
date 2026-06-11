@@ -270,3 +270,27 @@ def test_top_reduction_transactions_period_filter() -> None:
     assert out["indexed_record_count"] == 1
     assert len(out["items"]) == 1
     assert out["items"][0]["rec_id"] == "a"
+
+
+def test_amount_score_for_reduction() -> None:
+    assert bri.amount_score_for_reduction(10_000) == 0.25
+    assert bri.amount_score_for_reduction(200_000) == 5.0
+    assert bri.amount_score_for_reduction(2_000_000) == 30.0
+
+
+def test_high_amount_satisfied_can_rank_above_low_unsatisfied() -> None:
+    low_unsat = bri.reduction_index_for(
+        amount=2_000,
+        data_type="expense",
+        need_type="불만족",
+        payment_method="",
+        category_weight=0.7,
+    )
+    high_sat = bri.reduction_index_for(
+        amount=800_000,
+        data_type="expense",
+        need_type="만족",
+        payment_method="신용카드",
+        category_weight=1.0,
+    )
+    assert low_unsat < high_sat

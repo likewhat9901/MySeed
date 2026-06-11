@@ -25,6 +25,10 @@ NEED_TYPE_SATISFIED = "만족"
 NEED_TYPE_UNSATISFIED = "불만족"
 SKIP_INDEX_CATEGORY = "미분류"
 
+# 금액 점수 (기존 5만당 1점·상한 20 → 4만당 1점·상한 30)
+AMOUNT_SCORE_DIVISOR = 40_000.0
+AMOUNT_SCORE_CAP = 30.0
+
 # 예전에 쓰던 키(읽기 호환·저장 시 제거)
 _LEGACY_DATA_KEYS = frozenset(
     {"is_necessary", "necessity_confidence", "category_auto_assigned"}
@@ -195,6 +199,11 @@ def need_type_from_data(data: dict[str, Any]) -> tuple[str, bool]:
     return NEED_TYPE_SATISFIED, False
 
 
+def amount_score_for_reduction(amount: float) -> float:
+    """지수용 금액 점수. min(|amount| / divisor, cap)."""
+    return min(abs(amount) / AMOUNT_SCORE_DIVISOR, AMOUNT_SCORE_CAP)
+
+
 def reduction_index_for(
     *,
     amount: float,
@@ -208,6 +217,7 @@ def reduction_index_for(
     0~100. 거래별 줄일 소비 지수.
 
     - need_type·금액·결제수단: 기본 점수
+    - 금액: **4만당 1점**(상한 30, 기존 5만·20보다 가중 ↑)
     - 카테고리: **해당 월 불만족 비율**로 산출한 가중치(0.7~1.3)를 곱함. 중립=1.0
     - 버짓: 해당 카테고리·월 목표 초과 시 `budget_bonus` 가산(곱셈 전)
     """
@@ -221,7 +231,7 @@ def reduction_index_for(
     else:
         score += 5.0
 
-    score += min(abs(amount) / 50000.0, 20.0)
+    score += amount_score_for_reduction(amount)
 
     pay_k = _norm_text(payment_method)
     if any(k in pay_k for k in ("신용", "credit", "후불")):

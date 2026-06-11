@@ -71,8 +71,8 @@ def test_per_record_index_uses_weight_multiplier_and_budget() -> None:
     ]
     patches, _, _ = compute_reduction_for_records(rows, budgets={"쇼핑": 100000})
     idx = patches[-1]["data"]["reduction_index"]
-    # (45 + 4 + 30) * 1.0 = 79 — 3월 첫 달 weight 중립
-    assert idx == 79.0
+    # (45 + 5 + 30) * 1.0 = 80
+    assert idx == 80.0
 
 
 def test_neutral_weight_no_category_bonus() -> None:
@@ -84,4 +84,4 @@ def test_neutral_weight_no_category_bonus() -> None:
         category_weight=1.0,
         budget_bonus=0.0,
     )
-    assert base == 5.2
+    assert base == 5.25
