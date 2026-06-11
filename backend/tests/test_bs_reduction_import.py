@@ -30,10 +30,18 @@ def test_compute_skips_income_strips_keys() -> None:
             "data_type": "income",
             "data": {"amount": 1000000, "need_type": "만족", "reduction_index": 10},
         },
+        *[
+            {
+                "rec_id": f"r-base-{i}",
+                "data_type": "expense",
+                "data": {"date": "2025-06-01", "amount": 1000, "category": "식비", "need_type": "만족"},
+            }
+            for i in range(9)
+        ],
         {
             "rec_id": "r-exp",
             "data_type": "expense",
-            "data": {"amount": 5000, "category": "식비", "need_type": "불만족"},
+            "data": {"date": "2025-06-02", "amount": 5000, "category": "식비", "need_type": "불만족"},
         },
     ]
     patches, summary, _ = bri.compute_reduction_for_records(rows)
@@ -52,10 +60,18 @@ def test_skip_unclassified_category() -> None:
             "data_type": "expense",
             "data": {"amount": 10000, "category": "미분류", "need_type": "만족", "reduction_index": 99},
         },
+        *[
+            {
+                "rec_id": f"e-base-{i}",
+                "data_type": "expense",
+                "data": {"date": "2025-06-01", "amount": 1000, "category": "식사", "need_type": "만족"},
+            }
+            for i in range(9)
+        ],
         {
             "rec_id": "e",
             "data_type": "expense",
-            "data": {"amount": 5000, "category": "식사", "need_type": "만족"},
+            "data": {"date": "2025-06-02", "amount": 5000, "category": "식사", "need_type": "만족"},
         },
     ]
     patches, summary, _ = bri.compute_reduction_for_records(rows)
@@ -138,3 +154,36 @@ def test_top_reduction_categories_period_filter() -> None:
     assert out["total_expense_amount"] == 10000.0
     assert len(out["items"]) == 1
     assert out["items"][0]["category"] == "쇼핑"
+
+
+def test_skip_index_when_category_sample_under_10_in_6_months() -> None:
+    rows = [
+        {
+            "rec_id": "a",
+            "data_type": "expense",
+            "data": {
+                "date": "2025-05-13",
+                "amount": 2000,
+                "category": "여행/숙박",
+                "need_type": "불만족",
+                "reduction_index": 99,
+            },
+        },
+        {
+            "rec_id": "b",
+            "data_type": "expense",
+            "data": {
+                "date": "2025-09-05",
+                "amount": 15000,
+                "category": "여행/숙박",
+                "need_type": "만족",
+                "reduction_index": 88,
+            },
+        },
+    ]
+    patches, summary, _ = bri.compute_reduction_for_records(rows)
+    by_id = {p["rec_id"]: p["data"] for p in patches}
+    assert "reduction_index" not in by_id["a"]
+    assert "reduction_index" not in by_id["b"]
+    assert by_id["a"]["need_type"] == "불만족"
+    assert not any(s["category"] == "여행/숙박" for s in summary)

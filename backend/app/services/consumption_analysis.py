@@ -22,10 +22,14 @@ from app.services.bs_reduction_import import (
 from app.services.excel_record_import import coerce_numeric_amount
 from app.services.record_period import parse_record_date
 
-# --- tunable defaults (GPT 설계 + 우리 환경) ---
-DEFAULT_ALPHA = 1.0
-WEIGHT_MIN = 0.7
-WEIGHT_MAX = 1.3
+from app.services.dynamic_reduction import (
+    DEFAULT_ALPHA,
+    WEIGHT_MAX,
+    WEIGHT_MIN,
+    compute_category_weight,
+    compute_unsatisfied_rate,
+)
+
 AMOUNT_REL_WEIGHT = 0.4
 AMOUNT_ABS_WEIGHT = 0.6
 REGRET_SCORE_TRUE = 2.0
@@ -88,15 +92,9 @@ def compute_over_rate(category_spend: float, budget: float | None) -> float:
 
 
 def compute_regret_rate(regret_count: int, total_count: int) -> float:
-    if total_count <= 0:
-        return 0.0
-    return regret_count / total_count
-
-
-def compute_category_weight(regret_rate: float, *, alpha: float = DEFAULT_ALPHA) -> float:
-    """categoryWeight = clamp(1 + alpha * (regretRate - 0.5), 0.7, 1.3)"""
-    raw = 1.0 + alpha * (regret_rate - 0.5)
-    return clamp(raw, WEIGHT_MIN, WEIGHT_MAX)
+    """불만족 비율 (reduction_index와 동일 공식)."""
+    satisfied = max(total_count - regret_count, 0)
+    return compute_unsatisfied_rate(satisfied, regret_count)
 
 
 def compute_budget_pressure(over_rate: float) -> float:

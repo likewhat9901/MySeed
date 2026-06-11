@@ -12,50 +12,76 @@ def _row(rec_id, cat, date, amount, need_type="만족"):
     }
 
 
-def test_first_month_weight_is_base() -> None:
+def test_neutral_weight_first_month() -> None:
     ctx = dr.build_reduction_context([_row("a", "식비", "2025-01-10", 10000, NEED_TYPE_UNSATISFIED)])
-    assert ctx.category_weight("식비", "2025-01") == 0.5
+    assert ctx.category_weight("식비", "2025-01") == 1.0
 
 
-def test_weight_increases_after_unsatisfied() -> None:
+def test_second_month_uses_previous_month_only() -> None:
     rows = [
-        _row("a", "식비", "2025-01-10", 10000, NEED_TYPE_UNSATISFIED),
+        *[_row(f"j{i}", "식비", "2025-01-10", 10000, NEED_TYPE_UNSATISFIED) for i in range(10)],
         _row("b", "식비", "2025-02-10", 10000, "만족"),
     ]
-    ctx = dr.build_reduction_context(rows, weight_step=0.3)
-    assert ctx.category_weight("식비", "2025-01") == 0.5
-    assert ctx.category_weight("식비", "2025-02") == 0.8
+    ctx = dr.build_reduction_context(rows)
+    assert ctx.category_weight("식비", "2025-01") == 1.0
+    assert ctx.category_weight("식비", "2025-02") == 1.3
 
 
-def test_weight_decreases_after_satisfied() -> None:
+def test_third_month_uses_immediate_previous_not_first() -> None:
     rows = [
-        _row("a", "식비", "2025-01-10", 10000, "만족"),
-        _row("b", "식비", "2025-02-10", 10000, "만족"),
+        *[_row(f"j{i}", "식비", "2025-01-10", 10000, NEED_TYPE_UNSATISFIED) for i in range(10)],
+        *[_row(f"f{i}", "식비", "2025-02-10", 10000, "만족") for i in range(10)],
+        _row("c", "식비", "2025-03-10", 10000, "만족"),
     ]
-    ctx = dr.build_reduction_context(rows, weight_step=0.3)
-    assert ctx.category_weight("식비", "2025-02") == 0.2
+    ctx = dr.build_reduction_context(rows)
+    assert ctx.category_weight("식비", "2025-01") == 1.0
+    assert ctx.category_weight("식비", "2025-02") == 1.3
+    assert ctx.category_weight("식비", "2025-03") == 0.7
+
+
+def test_gap_months_use_last_activity_month() -> None:
+    """5월 거래 후 9월 거래 → 9월 weight는 5월(직전 거래월) 피드백(표본 10건+ 필요)."""
+    rows = [
+        *[
+            _row(f"t{i}", "여행/숙박", "2025-05-13", 2000, NEED_TYPE_UNSATISFIED)
+            for i in range(10)
+        ],
+        _row("b", "여행/숙박", "2025-09-05", 15000, "만족"),
+    ]
+    ctx = dr.build_reduction_context(rows)
+    assert ctx.category_weight("여행/숙박", "2025-05") == 1.0
+    assert ctx.category_weight("여행/숙박", "2025-09") == 1.3
 
 
 def test_budget_overage_bonus_on_context() -> None:
-    ctx = dr.build_reduction_context([_row("a", "쇼핑", "2025-03-10", 200000, NEED_TYPE_UNSATISFIED)], budgets={"쇼핑": 100000})
+    ctx = dr.build_reduction_context(
+        [_row("a", "쇼핑", "2025-03-10", 200000, NEED_TYPE_UNSATISFIED)],
+        budgets={"쇼핑": 100000},
+    )
     assert ctx.budget_bonus("쇼핑", "2025-03") == 30.0
 
 
-def test_per_record_index_uses_weight_and_budget() -> None:
-    rows = [_row("a", "쇼핑", "2025-03-10", 200000, NEED_TYPE_UNSATISFIED)]
+def test_per_record_index_uses_weight_multiplier_and_budget() -> None:
+    rows = [
+        *[
+            _row(f"base-{i}", "쇼핑", "2025-03-01", 10000, NEED_TYPE_UNSATISFIED)
+            for i in range(9)
+        ],
+        _row("a", "쇼핑", "2025-03-10", 200000, NEED_TYPE_UNSATISFIED),
+    ]
     patches, _, _ = compute_reduction_for_records(rows, budgets={"쇼핑": 100000})
-    idx = patches[0]["data"]["reduction_index"]
-    # need_type 불만족(45) + amount(4) + weight 0.5→18 + budget 30 = 97
-    assert idx == 97.0
+    idx = patches[-1]["data"]["reduction_index"]
+    # (45 + 4 + 30) * 1.0 = 79 — 3월 첫 달 weight 중립
+    assert idx == 79.0
 
 
-def test_weight_bonus_at_default() -> None:
+def test_neutral_weight_no_category_bonus() -> None:
     base = reduction_index_for(
         amount=10000,
         data_type="expense",
         need_type="만족",
         payment_method="",
-        category_weight=0.5,
+        category_weight=1.0,
         budget_bonus=0.0,
     )
-    assert base == 23.2
+    assert base == 5.2

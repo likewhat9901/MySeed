@@ -18,6 +18,7 @@ from app.services.bs_reduction_import import (
     is_expense_record,
     is_index_skipped_category,
 )
+from app.services.dynamic_reduction import DEFAULT_ALPHA
 from app.services.supabase_data import (
     fetch_tb_record_rows_for_ledger,
     update_tb_record_data_fields,
@@ -42,8 +43,12 @@ class RecomputeReductionBody(BaseModel):
         default_factory=dict,
         description="카테고리별 월 목표 소비 금액. 예: {\"식비\": 300000}",
     )
-    base_weight: float = Field(0.5, ge=0.0, le=1.0, description="첫 달 카테고리 가중치")
-    weight_step: float = Field(0.3, ge=0.0, le=1.0, description="전월 need_type(만족/불만족) 비율 차이 → 가중치 변화량")
+    alpha: float = Field(
+        DEFAULT_ALPHA,
+        ge=0.0,
+        le=5.0,
+        description="불만족 비율 → 카테고리 가중치 민감도 (중립=1.0)",
+    )
     budget_max_points: float = Field(30.0, ge=0.0, le=100.0, description="버짓 초과 시 최대 가산 점수")
 
 
@@ -54,8 +59,9 @@ class RecomputeReductionBody(BaseModel):
         "DB(`tb_record`)를 조회해 `data.reduction_index`를 재계산합니다. "
         "저장 시 `data`에 추가·갱신하는 키는 **`need_type`**, **`reduction_index`** (지출만). "
         "수입(income) 거래는 해당 키를 제거합니다. "
-        "**카테고리 가중치**: 첫 달 `base_weight`(기본 0.5), 다음 달부터 전월 **`need_type`(만족/불만족)** "
-        "비율로 ±(불만족↑→가중치↑). **버짓** 초과 시 해당 월 거래 지수에 가산. "
+        "**카테고리 가중치**: 카테고리×월 **불만족 비율**로 산출(모든 카테고리 동일, 중립=1.0). "
+        "**표본**: 거래일 기준 **6개월 창에 10건 미만** 카테고리는 `reduction_index` 미계산. "
+        "**버짓** 초과 시 해당 월 거래 지수에 가산. "
         "Bearer 생략 시 `led_id`로 소유자 access_token 자동 사용."
     ),
     response_model=BsReductionImportResponse,
@@ -82,8 +88,7 @@ async def recompute_reduction_from_db(
     patches, category_summary, warns = compute_reduction_for_records(
         rows,
         budgets=payload.budgets or None,
-        base_weight=payload.base_weight,
-        weight_step=payload.weight_step,
+        alpha=payload.alpha,
         budget_max_points=payload.budget_max_points,
     )
     if not patches:

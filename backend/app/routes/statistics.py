@@ -14,9 +14,7 @@ from app.deps.supabase_user import require_ledger_actor
 from app.services.bs_reduction_import import compute_top_reduction_categories
 from app.services.consumption_analysis import DEFAULT_ALPHA, analyze_consumption
 from app.services.dynamic_reduction import (
-    DEFAULT_BASE_WEIGHT,
     DEFAULT_BUDGET_MAX_POINTS,
-    DEFAULT_WEIGHT_STEP,
     compute_dynamic_reduction,
 )
 from app.services.record_period import ResolvedPeriod, parse_period_kind, resolve_period_range
@@ -239,14 +237,11 @@ class DynamicReductionBody(BaseModel):
         default_factory=dict,
         description="카테고리별 월 목표 소비 금액. 예: {\"식비\": 300000, \"쇼핑\": 100000}",
     )
-    base_weight: float = Field(
-        DEFAULT_BASE_WEIGHT, ge=0.0, le=1.0, description="첫 달 카테고리 가중치(기본 0.5)"
-    )
-    weight_step: float = Field(
-        DEFAULT_WEIGHT_STEP,
+    alpha: float = Field(
+        DEFAULT_ALPHA,
         ge=0.0,
-        le=1.0,
-        description="만족/후회 비율 차이가 가중치에 주는 최대 변화량(기본 0.3)",
+        le=5.0,
+        description="불만족 비율 → 카테고리 가중치 민감도 (기본 1.0, 중립=1.0)",
     )
     budget_max_points: float = Field(
         DEFAULT_BUDGET_MAX_POINTS,
@@ -287,8 +282,7 @@ async def get_dynamic_reduction_index(
     result = compute_dynamic_reduction(
         rows,
         budgets=payload.budgets or None,
-        base_weight=payload.base_weight,
-        weight_step=payload.weight_step,
+        alpha=payload.alpha,
         budget_max_points=payload.budget_max_points,
     )
     if not result["categories"]:

@@ -11,11 +11,11 @@ from typing import Any
 from app.services.dynamic_reduction import (
     ReductionContext,
     build_reduction_context,
-    category_weight_bonus,
+    category_meets_index_sample,
     month_key_from_data,
 )
 from app.services.excel_record_import import coerce_numeric_amount
-from app.services.record_period import record_in_date_range
+from app.services.record_period import parse_record_date, record_in_date_range
 
 # 재계산 시 data에 추가·갱신하는 키만 이 둘
 DATA_KEY_NEED_TYPE = "need_type"
@@ -88,6 +88,13 @@ def is_expense_record(row: dict[str, Any]) -> bool:
 def is_index_skipped_category(category: str) -> bool:
     """지수·가중치 계산에서 제외할 카테고리."""
     return _trim(category) == SKIP_INDEX_CATEGORY
+
+
+def _strip_reduction_index_only(data: dict[str, Any]) -> dict[str, Any]:
+    """표본 부족 등 지수 미계산 거래에서 `reduction_index`만 제거 (`need_type` 유지)."""
+    out = dict(data)
+    out.pop(DATA_KEY_REDUCTION_INDEX, None)
+    return out
 
 
 def _strip_reduction_fields(data: dict[str, Any]) -> dict[str, Any]:
@@ -194,15 +201,15 @@ def reduction_index_for(
     data_type: str,
     need_type: str,
     payment_method: str,
-    category_weight: float = 0.5,
+    category_weight: float = 1.0,
     budget_bonus: float = 0.0,
 ) -> float:
     """
     0~100. 거래별 줄일 소비 지수.
 
     - need_type·금액·결제수단: 기본 점수
-    - 카테고리: **동적 가중치** × scale (기본 weight 0.5 → +18점, 예전 쇼핑/여가 고정 보너스와 동일)
-    - 버짓: 해당 카테고리·월 목표 초과 시 `budget_bonus` 가산
+    - 카테고리: **해당 월 불만족 비율**로 산출한 가중치(0.7~1.3)를 곱함. 중립=1.0
+    - 버짓: 해당 카테고리·월 목표 초과 시 `budget_bonus` 가산(곱셈 전)
     """
     if data_type == "income":
         return 0.0
@@ -215,13 +222,13 @@ def reduction_index_for(
         score += 5.0
 
     score += min(abs(amount) / 50000.0, 20.0)
-    score += category_weight_bonus(category_weight)
 
     pay_k = _norm_text(payment_method)
     if any(k in pay_k for k in ("신용", "credit", "후불")):
         score += 7.0
 
     score += max(budget_bonus, 0.0)
+    score *= max(category_weight, 0.0)
 
     return round(min(score, 100.0), 2)
 
@@ -240,14 +247,13 @@ def compute_reduction_for_records(
     rows: list[dict[str, Any]],
     *,
     budgets: dict[str, float] | None = None,
-    base_weight: float = 0.5,
-    weight_step: float = 0.3,
+    alpha: float = 1.0,
     budget_max_points: float = 30.0,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     """
     DB tb_record 행에 대해 `need_type`, `reduction_index` 갱신 패치 반환.
 
-    카테고리 가중치: 첫 달 `base_weight`, 이후 전월 만족/후회 비율로 ±.
+    카테고리 가중치: 카테고리×월 **불만족 비율** (모든 카테고리 동일 공식, 중립=1.0).
     버짓 초과: 해당 카테고리·월 거래에 보너스 점수 가산.
     """
     warnings: list[str] = []
@@ -259,8 +265,7 @@ def compute_reduction_for_records(
     ctx: ReductionContext = build_reduction_context(
         rows,
         budgets=budgets,
-        base_weight=base_weight,
-        weight_step=weight_step,
+        alpha=alpha,
         budget_max_points=budget_max_points,
     )
 
@@ -287,6 +292,11 @@ def compute_reduction_for_records(
 
         if is_index_skipped_category(category):
             patches.append({"rec_id": str(rec_id), "data": _strip_reduction_fields(data)})
+            continue
+
+        record_date = parse_record_date(data.get("date"))
+        if record_date is None or not category_meets_index_sample(rows, category, record_date):
+            patches.append({"rec_id": str(rec_id), "data": _strip_reduction_index_only(data)})
             continue
 
         need_type, user_set = need_type_from_data(data)
@@ -345,18 +355,12 @@ def expense_category_label(data: dict[str, Any]) -> str:
     )
 
 
-def _reduction_index_for_row(row: dict[str, Any], data: dict[str, Any], amount: float, category: str) -> float:
+def _reduction_index_for_row(row: dict[str, Any], data: dict[str, Any], amount: float, category: str) -> float | None:
     raw = data.get(DATA_KEY_REDUCTION_INDEX)
     if isinstance(raw, (int, float)):
         if not (isinstance(raw, float) and math.isnan(raw)):  # type: ignore[arg-type]
             return float(raw)
-    need_type, _ = need_type_from_data(data)
-    return reduction_index_for(
-        amount=amount,
-        data_type="expense",
-        need_type=need_type,
-        payment_method=str(data.get("payment_method", "")),
-    )
+    return None
 
 
 def compute_top_reduction_categories(
@@ -393,6 +397,8 @@ def compute_top_reduction_categories(
         if is_index_skipped_category(cat):
             continue
         idx = _reduction_index_for_row(r, data, float(amount), cat)
+        if idx is None:
+            continue
         g = by_cat[cat]
         g["index_sum"] += idx
         g["index_count"] += 1.0
