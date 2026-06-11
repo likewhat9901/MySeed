@@ -11,7 +11,10 @@ from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
 from app.deps.supabase_user import require_ledger_actor
-from app.services.bs_reduction_import import compute_top_reduction_categories
+from app.services.bs_reduction_import import (
+    compute_top_reduction_categories,
+    compute_top_reduction_transactions,
+)
 from app.services.consumption_analysis import DEFAULT_ALPHA, analyze_consumption
 from app.services.dynamic_reduction import (
     DEFAULT_BUDGET_MAX_POINTS,
@@ -229,6 +232,129 @@ async def get_top_reduction_categories(
         expense_record_count=int(result.get("expense_record_count", 0)),
         total_expense_amount=result["total_expense_amount"],
         items=[TopReductionCategoryItem(**x) for x in result["items"]],
+    )
+
+
+class TopReductionTransactionItem(BaseModel):
+    rank: int = Field(description="우선순위 (1=가장 줄여야 할 거래)")
+    rec_id: str = Field(description="tb_record.rec_id")
+    date: str | None = Field(default=None, description="거래일(YYYY-MM-DD)")
+    amount: float = Field(description="지출 금액")
+    category: str = Field(description="카테고리")
+    need_type: str = Field(description="만족 | 불만족")
+    reduction_index: float = Field(description="줄일 소비 지수(0~100)")
+    title: str = Field(default="", description="거래명(title/merchant/memo)")
+
+
+class TopReductionTransactionsResponse(BaseModel):
+    led_id: UUID
+    period: str | None = Field(
+        default=None,
+        description="적용 기간 종류(year|half|quarter|month|week). 미지정 시 전체",
+    )
+    period_start: str | None = Field(default=None, description="집계 시작일(YYYY-MM-DD)")
+    period_end: str | None = Field(default=None, description="집계 종료일(YYYY-MM-DD)")
+    expense_record_count: int = Field(
+        default=0,
+        description="기간·지출 조건에 맞는 tb_record 건수",
+    )
+    indexed_record_count: int = Field(
+        default=0,
+        description="기간 내 `reduction_index`가 있는 지출 건수(순위 대상)",
+    )
+    items: list[TopReductionTransactionItem] = Field(
+        default_factory=list,
+        description="줄일 소비 지수 상위 거래(기본 20건)",
+    )
+
+
+@router.get(
+    "/statistics/reduction/top-transactions",
+    summary="줄여야 할 소비 거래 Top N",
+    description=(
+        "DB `tb_record` **지출** 중 `reduction_index`가 저장된 거래만 대상으로 "
+        "**지수 내림차순** 상위 N건을 반환합니다(기본 20). "
+        "미분류·표본 부족 등 지수 미계산 거래는 제외됩니다. "
+        "**기간 필터**: `period` + `year` 및 종류별 파라미터 — "
+        "`year`(연), `half`+`half`(1=상반기·2=하반기), `quarter`+`quarter`(1~4), "
+        "`month`+`month`(1~12), `week`+`week`(ISO 주차 1~53). "
+        "`period` 생략 시 가계부 전체 기간."
+    ),
+    response_model=TopReductionTransactionsResponse,
+)
+async def get_top_reduction_transactions(
+    led_id: UUID = Query(..., description="tb_ledger.led_id"),
+    limit: int = Query(20, ge=1, le=100, description="상위 N개 (기본 20)"),
+    period: str | None = Query(
+        None,
+        description="기간: year|half|quarter|month|week (또는 연·반기·분기·월·주)",
+        examples=["month", "quarter"],
+    ),
+    year: int | None = Query(None, ge=1970, le=2100, description="기준 연도"),
+    month: int | None = Query(None, ge=1, le=12, description="period=month 일 때 월(1~12)"),
+    half: int | None = Query(None, ge=1, le=2, description="period=half 일 때 1=상반기, 2=하반기"),
+    quarter: int | None = Query(None, ge=1, le=4, description="period=quarter 일 때 1~4"),
+    week: int | None = Query(None, ge=1, le=53, description="period=week 일 때 ISO 주차"),
+    authorization: Annotated[
+        str | None,
+        Header(description="Bearer 생략 가능(led_id로 소유자 토큰 자동 발급)"),
+    ] = None,
+) -> TopReductionTransactionsResponse:
+    settings = get_settings()
+    if not settings.supabase_configured():
+        raise HTTPException(status_code=503, detail="SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY 필요")
+
+    resolved: ResolvedPeriod | None = None
+    if period is not None and str(period).strip():
+        if year is None:
+            raise HTTPException(status_code=400, detail="period 사용 시 year가 필요합니다")
+        if parse_period_kind(period) is None:
+            raise HTTPException(
+                status_code=400,
+                detail='period는 year|half|quarter|month|week (연·반기·분기·월·주) 중 하나여야 합니다',
+            )
+        try:
+            resolved = resolve_period_range(
+                period=period,
+                year=year,
+                month=month,
+                half=half,
+                quarter=quarter,
+                week=week,
+            )
+        except ValueError as e:
+            raise HTTPException(status_code=400, detail=str(e)) from e
+    elif any(x is not None for x in (year, month, half, quarter, week)):
+        raise HTTPException(status_code=400, detail="year·month 등 기간 파라미터는 period와 함께 보내야 합니다")
+
+    try:
+        require_ledger_actor(led_id, authorization)
+        rows = fetch_tb_record_rows_for_ledger(led_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=502, detail=f"조회 실패: {e!s}") from e
+
+    result = compute_top_reduction_transactions(
+        rows,
+        top_n=limit,
+        period_start=resolved.start if resolved else None,
+        period_end=resolved.end if resolved else None,
+    )
+    if not result["items"]:
+        raise HTTPException(
+            status_code=422,
+            detail="해당 기간에 reduction_index가 있는 지출 내역이 없습니다",
+        )
+
+    return TopReductionTransactionsResponse(
+        led_id=led_id,
+        period=resolved.kind if resolved else None,
+        period_start=resolved.start.isoformat() if resolved else None,
+        period_end=resolved.end.isoformat() if resolved else None,
+        expense_record_count=int(result.get("expense_record_count", 0)),
+        indexed_record_count=int(result.get("indexed_record_count", 0)),
+        items=[TopReductionTransactionItem(**x) for x in result["items"]],
     )
 
 

@@ -363,6 +363,90 @@ def _reduction_index_for_row(row: dict[str, Any], data: dict[str, Any], amount: 
     return None
 
 
+def _record_display_title(data: dict[str, Any]) -> str:
+    for key in ("title", "merchant", "memo"):
+        v = data.get(key)
+        if v not in (None, ""):
+            return str(v).strip()[:200]
+    return ""
+
+
+def _record_date_str(data: dict[str, Any]) -> str | None:
+    d = parse_record_date(data.get("date"))
+    return d.isoformat() if d else None
+
+
+def compute_top_reduction_transactions(
+    rows: list[dict[str, Any]],
+    *,
+    top_n: int = 20,
+    period_start: date | None = None,
+    period_end: date | None = None,
+) -> dict[str, Any]:
+    """
+    지출 중 `reduction_index`가 저장된 거래를 지수 내림차순으로 상위 N건.
+    미분류·지수 미계산(표본 부족 등) 거래는 제외.
+    """
+    candidates: list[dict[str, Any]] = []
+
+    for r in rows:
+        if not is_expense_record(r):
+            continue
+        if period_start is not None and period_end is not None and not record_in_date_range(
+            r, period_start, period_end
+        ):
+            continue
+        data = r.get("data")
+        if not isinstance(data, dict):
+            continue
+        amount = coerce_numeric_amount(data.get("amount"))
+        if amount is None:
+            continue
+
+        cat = expense_category_label(data)
+        if is_index_skipped_category(cat):
+            continue
+        idx = _reduction_index_for_row(r, data, float(amount), cat)
+        if idx is None:
+            continue
+
+        need_type, _ = need_type_from_data(data)
+        candidates.append(
+            {
+                "rec_id": str(r.get("rec_id", "")),
+                "date": _record_date_str(data),
+                "amount": round(float(amount), 2),
+                "category": cat,
+                "need_type": need_type,
+                "reduction_index": round(idx, 2),
+                "title": _record_display_title(data),
+            }
+        )
+
+    candidates.sort(key=lambda x: (-x["reduction_index"], -x["amount"], x["rec_id"]))
+
+    items: list[dict[str, Any]] = []
+    for rank, row in enumerate(candidates[: max(top_n, 0)], start=1):
+        items.append({"rank": rank, **row})
+
+    expense_rows_in_scope = sum(
+        1
+        for r in rows
+        if is_expense_record(r)
+        and (
+            period_start is None
+            or period_end is None
+            or record_in_date_range(r, period_start, period_end)
+        )
+    )
+
+    return {
+        "items": items,
+        "indexed_record_count": len(candidates),
+        "expense_record_count": expense_rows_in_scope,
+    }
+
+
 def compute_top_reduction_categories(
     rows: list[dict[str, Any]],
     *,

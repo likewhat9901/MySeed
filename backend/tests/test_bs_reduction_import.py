@@ -187,3 +187,86 @@ def test_skip_index_when_category_sample_under_10_in_6_months() -> None:
     assert "reduction_index" not in by_id["b"]
     assert by_id["a"]["need_type"] == "불만족"
     assert not any(s["category"] == "여행/숙박" for s in summary)
+
+
+def test_top_reduction_transactions_ranking() -> None:
+    rows = [
+        {
+            "rec_id": "low",
+            "data_type": "expense",
+            "data": {
+                "date": "2025-06-01",
+                "amount": 5000,
+                "category": "식비",
+                "need_type": "만족",
+                "reduction_index": 10,
+                "title": "점심",
+            },
+        },
+        {
+            "rec_id": "high",
+            "data_type": "expense",
+            "data": {
+                "date": "2025-06-02",
+                "amount": 50000,
+                "category": "쇼핑",
+                "need_type": "불만족",
+                "reduction_index": 90,
+                "title": "의류",
+            },
+        },
+        {
+            "rec_id": "no-index",
+            "data_type": "expense",
+            "data": {
+                "date": "2025-06-03",
+                "amount": 99999,
+                "category": "여행/숙박",
+                "need_type": "불만족",
+            },
+        },
+    ]
+    out = bri.compute_top_reduction_transactions(rows, top_n=20)
+    assert out["indexed_record_count"] == 2
+    assert len(out["items"]) == 2
+    assert out["items"][0]["rec_id"] == "high"
+    assert out["items"][0]["reduction_index"] == 90.0
+    assert out["items"][0]["title"] == "의류"
+
+
+def test_top_reduction_transactions_period_filter() -> None:
+    rows = [
+        {
+            "rec_id": "a",
+            "data_type": "expense",
+            "data": {
+                "date": "2025-01-15",
+                "amount": 10000,
+                "category": "쇼핑",
+                "need_type": "불만족",
+                "reduction_index": 90,
+            },
+        },
+        {
+            "rec_id": "b",
+            "data_type": "expense",
+            "data": {
+                "date": "2025-06-15",
+                "amount": 5000,
+                "category": "식비",
+                "need_type": "만족",
+                "reduction_index": 10,
+            },
+        },
+    ]
+    from datetime import date
+
+    out = bri.compute_top_reduction_transactions(
+        rows,
+        top_n=20,
+        period_start=date(2025, 1, 1),
+        period_end=date(2025, 3, 31),
+    )
+    assert out["indexed_record_count"] == 1
+    assert len(out["items"]) == 1
+    assert out["items"][0]["rec_id"] == "a"
