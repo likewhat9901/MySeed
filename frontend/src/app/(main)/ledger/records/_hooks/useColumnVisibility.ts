@@ -4,15 +4,15 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { RecordColumn } from '@/features/ledger/record/types'
 
-const KEY = 'mm.columnVisibility.v1'
-
-// 기본으로 보이는 핵심 컬럼
-const DEFAULT_VISIBLE: RecordColumn[] = ['date', 'type', 'category', 'description', 'amount']
+const KEY = 'mm.columnVisibility.v2'
 
 const ALL_COLUMNS: RecordColumn[] = [
   'date', 'time', 'type', 'category', 'subcategory',
   'description', 'amount', 'currency', 'paymentMethod', 'memo',
 ]
+
+// 기본으로 모든 컬럼 표시
+const DEFAULT_VISIBLE: RecordColumn[] = [...ALL_COLUMNS]
 
 function load(): RecordColumn[] {
   if (typeof window === 'undefined') return DEFAULT_VISIBLE

@@ -3,7 +3,7 @@
 
 import Link from 'next/link'
 import { usePathname, useSearchParams } from 'next/navigation'
-import { LayoutDashboard, FileInput, Target, NotebookPen, TrendingUp } from 'lucide-react'
+import { LayoutDashboard, FileInput, Target, TrendingUp } from 'lucide-react'
 import { useLocale } from '@/lib/i18n/LocaleContext'
 import { editorMessages } from '@/lib/i18n/messages/editorMessages'
 
@@ -20,7 +20,6 @@ export default function LedgerTabBar() {
     { href: '/ledger/overview',  label: t.tabOverview,     icon: LayoutDashboard },
     { href: '/ledger/analysis',  label: t.tabAnalysis,     icon: TrendingUp },
     { href: '/ledger/goals',     label: t.tabGoals,        icon: Target },
-    { href: '/ledger/diary',     label: t.tabDiary,        icon: NotebookPen },
   ]
 
   return (

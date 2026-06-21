@@ -6,7 +6,7 @@ import { useSearchParams } from 'next/navigation'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { useLedgerContext } from '../_context/LedgerContext'
 import { getRecord } from '@/features/ledger/record/rpc'
-import TrendLineSection from './_components/overview/TrendLineSection'
+import { useReviewSettings } from '@/features/ledger/record/reviewSettings'
 
 type ViewMode = 'month' | 'year'
 
@@ -21,14 +21,16 @@ interface CategoryItem { label: string; amount: number; color: string }
 function BudgetPanel({ expense, categoryItems, daysLeft, viewMode }: {
   expense: number; categoryItems: CategoryItem[]; daysLeft: number; viewMode: 'month' | 'year'
 }) {
-  const [budget, setBudget] = useState<{ total: number; cats: Record<string, number> }>(() => {
-    try {
-      const saved = localStorage.getItem('overview2_budget')
-      return saved ? JSON.parse(saved) : { total: 0, cats: {} }
-    } catch { return { total: 0, cats: {} } }
-  })
+  const [budget, setBudget] = useState<{ total: number; cats: Record<string, number> }>({ total: 0, cats: {} })
   const [open, setOpen] = useState(false)
   const [draftCats, setDraftCats] = useState<Record<string, string>>({})
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('overview2_budget')
+      if (saved) setBudget(JSON.parse(saved))
+    } catch {}
+  }, [])
 
   const hasBudget = budget.total > 0
   const pct       = hasBudget ? Math.min(Math.round((expense / budget.total) * 100), 100) : 0
@@ -193,6 +195,15 @@ function shiftMonth(ym: string, delta: number) {
   const d = new Date(y, m - 1 + delta, 1)
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`
 }
+// 차트 y축 상한을 1/2/5 × 10ⁿ 형태의 깔끔한 값으로 올림
+function niceCeil(n: number) {
+  if (n <= 0) return 1
+  const exp = Math.floor(Math.log10(n))
+  const base = Math.pow(10, exp)
+  const f = n / base
+  const nice = f <= 1 ? 1 : f <= 2 ? 2 : f <= 5 ? 5 : 10
+  return nice * base
+}
 
 /* ── 섹션 라벨 — 회색 라인+텍스트 ── */
 function SectionLabel({ label }: { label: string }) {
@@ -235,6 +246,11 @@ export default function Overview2Page() {
   const recIdFromUrl = searchParams.get('rec')
   const records = rawRecords ?? []
 
+  // 고정 판정 — 내역 isFixed 또는 규칙에서 지정한 고정 카테고리
+  const { settings } = useReviewSettings()
+  const fixedCatSet = useMemo(() => new Set(settings.fixedCategories), [settings.fixedCategories])
+  const isFixedRecord = (r: { isFixed: boolean; category: string }) => r.isFixed || fixedCatSet.has(r.category)
+
   const [viewMode, setViewMode]     = useState<ViewMode>('month')
   const [dropdownOpen, setDropdown] = useState(false)
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -270,11 +286,15 @@ export default function Overview2Page() {
     ? availableMonths.indexOf(activeMonth ?? '') < availableMonths.length - 1
     : availableYears.indexOf(activeYear) < availableYears.length - 1
 
+  function formatMonthLabel(month: string): string {
+    const [y, m] = month.split('-')
+    return `${y}년 ${Number(m)}월`
+  }
+
   const navLabel = useMemo(() => {
     if (viewMode === 'month') {
       if (!activeMonth) return ''
-      const [y, m] = activeMonth.split('-')
-      return `${y}년 ${Number(m)}월`
+      return formatMonthLabel(activeMonth)
     }
     return `${activeYear}년`
   }, [viewMode, activeMonth, activeYear])
@@ -311,8 +331,8 @@ export default function Overview2Page() {
   }, [records, viewMode, activeMonth, activeYear])
 
   /* ── 집계 ── */
-  const { expense, income, categoryItems } = useMemo(() => {
-    let expense = 0, income = 0
+  const { expense, income, transfer, categoryItems } = useMemo(() => {
+    let expense = 0, income = 0, transfer = 0
     const catMap = new Map<string, number>()
     for (const r of filteredRecords) {
       if (r.type === '지출' && r.amount > 0) {
@@ -321,23 +341,26 @@ export default function Overview2Page() {
         catMap.set(k, (catMap.get(k) ?? 0) + r.amount)
       } else if (r.type === '수입' && r.amount > 0) {
         income += r.amount
+      } else if (r.type === '이체' && r.amount > 0) {
+        transfer += r.amount
       }
     }
     const categoryItems = Array.from(catMap.entries())
       .map(([label, amount], i) => ({ label, amount, color: CATEGORY_COLORS[i % CATEGORY_COLORS.length] }))
       .sort((a, b) => b.amount - a.amount)
-    return { expense, income, categoryItems }
+    return { expense, income, transfer, categoryItems }
   }, [filteredRecords])
 
   const net = income - expense
 
-  const { prevMonthExpense, prevMonthIncome } = useMemo(() => {
-    if (viewMode !== 'month' || !activeMonth) return { prevMonthExpense: 0, prevMonthIncome: 0 }
+  const { prevMonthExpense, prevMonthIncome, prevMonthTransfer } = useMemo(() => {
+    if (viewMode !== 'month' || !activeMonth) return { prevMonthExpense: 0, prevMonthIncome: 0, prevMonthTransfer: 0 }
     const prevPrefix = shiftMonth(activeMonth, -1)
     const prevRecs = records.filter(r => r.date.startsWith(prevPrefix))
     return {
-      prevMonthExpense: prevRecs.filter(r => r.type === '지출').reduce((s, r) => s + r.amount, 0),
-      prevMonthIncome:  prevRecs.filter(r => r.type === '수입').reduce((s, r) => s + r.amount, 0),
+      prevMonthExpense:  prevRecs.filter(r => r.type === '지출').reduce((s, r) => s + r.amount, 0),
+      prevMonthIncome:   prevRecs.filter(r => r.type === '수입').reduce((s, r) => s + r.amount, 0),
+      prevMonthTransfer: prevRecs.filter(r => r.type === '이체').reduce((s, r) => s + r.amount, 0),
     }
   }, [records, activeMonth, viewMode])
 
@@ -361,7 +384,7 @@ export default function Overview2Page() {
     const variable: typeof filteredRecords = []
     for (const r of filteredRecords) {
       if (r.type !== '지출' || r.amount <= 0) continue
-      if (r.isFixed) fixed.push(r); else variable.push(r)
+      if (isFixedRecord(r)) fixed.push(r); else variable.push(r)
     }
     const grp = (arr: typeof filteredRecords, key: (r: typeof arr[0]) => string) => {
       const m = new Map<string, number>()
@@ -377,7 +400,7 @@ export default function Overview2Page() {
       fixedTop:   grp(fixed,    r => r.description || r.category || '기타'),
       varTop:     grp(variable, r => r.category || '기타'),
     }
-  }, [filteredRecords])
+  }, [filteredRecords, fixedCatSet])
 
   const fixedPct  = expense > 0 ? Math.round((fixedTotal / expense) * 100) : 0
   const varPct    = expense > 0 ? Math.round((varTotal   / expense) * 100) : 0
@@ -388,6 +411,45 @@ export default function Overview2Page() {
   const vsIncome  = viewMode === 'month' ? pctDelta(income,  prevMonthIncome)  : null
 
   const expenseCount  = filteredRecords.filter(r => r.type === '지출').length
+
+  /* 지출 추이 — 고정비 바닥 + 변동지출 누적 (월: 일별 / 연: 월별) */
+  const trendData = useMemo(() => {
+    // 버킷 키 + x라벨 + 주말
+    let buckets: { key: string; label: string; weekend: boolean }[] = []
+    if (viewMode === 'month') {
+      if (!activeMonth) return { points: [], fixed: 0 }
+      const [y, mo] = activeMonth.split('-').map(Number)
+      const totalDays = new Date(y, mo, 0).getDate()
+      buckets = Array.from({ length: totalDays }, (_, i) => {
+        const d = i + 1
+        const dow = new Date(y, mo - 1, d).getDay()
+        return { key: `${activeMonth}-${String(d).padStart(2, '0')}`, label: `${d}`, weekend: dow === 0 || dow === 6 }
+      })
+    } else {
+      buckets = Array.from({ length: 12 }, (_, i) => ({
+        key: `${activeYear}-${String(i + 1).padStart(2, '0')}`, label: `${i + 1}월`, weekend: false,
+      }))
+    }
+
+    // 버킷별 변동지출 + 고정비 총액
+    const varDaily = new Map<string, number>()
+    let fixed = 0
+    for (const r of filteredRecords) {
+      if (r.type !== '지출' || r.amount <= 0) continue
+      if (isFixedRecord(r)) { fixed += r.amount; continue }
+      const k = viewMode === 'month' ? r.date : r.date.slice(0, 7)
+      varDaily.set(k, (varDaily.get(k) ?? 0) + r.amount)
+    }
+
+    // 변동 누적 (고정비를 시작점으로)
+    let cum = 0
+    const points = buckets.map(b => {
+      const daily = varDaily.get(b.key) ?? 0
+      cum += daily
+      return { ...b, daily, cumWithFixed: fixed + cum }
+    })
+    return { points, fixed }
+  }, [filteredRecords, activeMonth, activeYear, viewMode, fixedCatSet])
 
   return (
     <div className="flex flex-col flex-1 overflow-hidden">
@@ -412,37 +474,39 @@ export default function Overview2Page() {
               </button>
             ))}
           </div>
-          <div className="relative flex items-center gap-1" ref={dropdownRef}>
+          <div className="flex items-center gap-1">
             <button onClick={() => shiftNav(-1)} disabled={!canPrev}
               className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30">
               <ChevronLeft size={14} />
             </button>
-            <button
-              onClick={() => viewMode === 'month' ? setDropdown(v => !v) : undefined}
-              className={`text-xs font-semibold text-gray-700 min-w-[88px] text-center px-2 py-1 border border-gray-200 ${
-                viewMode === 'month' ? 'hover:border-gray-400 cursor-pointer' : 'cursor-default'
-              }`}
-            >
-              {navLabel}
-            </button>
+            <div className="relative" ref={dropdownRef}>
+              <button
+                onClick={() => viewMode === 'month' ? setDropdown(v => !v) : undefined}
+                className={`text-xs font-semibold text-gray-700 min-w-[88px] text-center px-2 py-1 border border-gray-200 ${
+                  viewMode === 'month' ? 'hover:border-gray-400 cursor-pointer' : 'cursor-default'
+                }`}
+              >
+                {navLabel}
+              </button>
+              {dropdownOpen && viewMode === 'month' && (
+                <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-300 shadow-md py-0.5 w-[88px]">
+                  {[...availableMonths].reverse().map(m => (
+                    <button key={m}
+                      onClick={() => { setRefMonth(m); setDropdown(false) }}
+                      className={`w-full px-2 py-1.5 text-left text-xs transition-colors ${
+                        m === activeMonth ? 'bg-gray-800 text-white' : 'text-gray-700 hover:bg-gray-50'
+                      }`}
+                    >
+                      {formatMonthLabel(m)}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
             <button onClick={() => shiftNav(1)} disabled={!canNext}
               className="p-1 text-gray-400 hover:text-gray-700 disabled:opacity-30">
               <ChevronRight size={14} />
             </button>
-            {dropdownOpen && viewMode === 'month' && (
-              <div className="absolute left-0 top-full mt-1 z-50 bg-white border border-gray-300 shadow-md py-0.5 min-w-[100px]">
-                {availableMonths.map(m => (
-                  <button key={m}
-                    onClick={() => { setRefMonth(m); setDropdown(false) }}
-                    className={`w-full px-4 py-1.5 text-left text-xs transition-colors ${
-                      m === activeMonth ? 'bg-gray-800 text-white' : 'text-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {m}
-                  </button>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       </div>
@@ -455,101 +519,134 @@ export default function Overview2Page() {
           <div>
             <SectionLabel label="Summary" />
             <div className="grid grid-cols-[2fr_1fr] gap-4">
-              {/* 좌: 새 디자인 — 50:50 좌우 균등 */}
-              <div className="bg-white border border-gray-300 flex divide-x divide-gray-200">
+              {/* 좌: 수치(2분할) / 우: 인사이트 — 분석 탭 요약 카드와 동형 */}
+              <div className="bg-white border border-gray-300 flex">
 
-                {/* 좌측 패널 — 지출 */}
-                <div className="flex-1 flex flex-col">
-                  {/* 상단: 지출 큰 숫자 */}
-                  <div className="px-5 py-4 flex-1">
-                    <p className="text-[9px] font-bold tracking-[0.18em] uppercase text-gray-400 mb-2">이번달 지출</p>
-                    <div className="flex items-baseline gap-2">
-                      <p className="text-3xl font-extrabold text-gray-900 tracking-tight leading-none">{fmtW(expense)}</p>
-                      {vsExpense != null && (
-                        <span className={`text-[11px] font-semibold ${vsExpense <= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                          {vsExpense <= 0 ? '▼' : '▲'}{Math.abs(vsExpense)}%
-                        </span>
-                      )}
-                    </div>
-                    {prevMonthExpense > 0 && (
-                      <p className={`text-[11px] mt-1.5 font-medium ${expense <= prevMonthExpense ? 'text-green-600' : 'text-red-500'}`}>
-                        {expense <= prevMonthExpense
-                          ? `전월보다 ${fmtW(prevMonthExpense - expense)} 절약`
-                          : `전월보다 ${fmtW(expense - prevMonthExpense)} 초과`}
-                      </p>
-                    )}
-                  </div>
-                  {/* 하단: 건수/일평균 */}
-                  <div className="px-5 py-3 border-t border-gray-200 flex gap-6 text-[11px] flex-1">
-                    <div className="flex flex-col gap-1">
-                      <span className="text-gray-500">건수</span>
-                      <span className="font-semibold text-gray-700 tabular-nums">{expenseCount}건</span>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      <span className="text-gray-500">일평균</span>
-                      <span className="font-semibold text-gray-700 tabular-nums">{fmtW(avgPerDay)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* 우측 패널 — 수입/순수입 + 프로그레스 바 + 예측 */}
-                <div className="flex-1 flex flex-col">
-                  {/* 수입 / 순수입 */}
-                  <div className="px-5 py-4 space-y-1.5">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-gray-500">수입</span>
-                      <div className="flex items-center gap-1.5">
-                        <span className="text-[13px] font-bold text-green-600 tabular-nums">{fmtW(income)}</span>
-                        {vsIncome != null && (
-                          <span className={`text-[9px] font-semibold ${vsIncome >= 0 ? 'text-green-600' : 'text-red-500'}`}>
-                            {vsIncome >= 0 ? '▲' : '▼'}{Math.abs(vsIncome)}%
+                {/* 좌: 지출·건수 가로 → 비중 바 → 수입/순수입 */}
+                <div className="w-1/2 min-w-0 flex flex-col divide-y divide-gray-100 border-r border-gray-200">
+                  {/* 지출 / 건수 가로 */}
+                  <div className="px-4 py-3 flex gap-4 flex-1 items-center">
+                    <div className="flex-1">
+                      <p className="text-[9px] font-bold tracking-[0.14em] uppercase text-gray-400 mb-1">이번달 지출</p>
+                      <div className="flex items-baseline gap-1.5">
+                        <p className="text-2xl font-extrabold text-gray-900 leading-none tabular-nums">{fmtW(expense)}</p>
+                        {vsExpense != null && (
+                          <span className={`text-[10px] font-bold tabular-nums ${vsExpense <= 0 ? 'text-green-600' : 'text-red-500'}`}>
+                            {vsExpense <= 0 ? '▼' : '▲'}{Math.abs(vsExpense)}%
                           </span>
                         )}
                       </div>
+                      <p className="text-[10px] text-gray-400 mt-1 tabular-nums">일평균 {fmtW(avgPerDay)}</p>
                     </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] text-gray-500">순수입</span>
-                      <span className={`text-[13px] font-bold tabular-nums ${net < 0 ? 'text-red-500' : 'text-gray-900'}`}>
-                        {net < 0 ? `-${fmtW(-net)}` : fmtW(net)}
-                      </span>
+                    <div className="flex-1 border-l border-gray-100 pl-4">
+                      <p className="text-[9px] font-bold tracking-[0.14em] uppercase text-gray-400 mb-1">건수</p>
+                      <p className="text-2xl font-extrabold text-gray-800 leading-none tabular-nums">{expenseCount}건</p>
+                      <p className="text-[10px] text-gray-400 mt-1 tabular-nums">고정 {fixedCount} · 변동 {varCount}</p>
                     </div>
                   </div>
-                  {/* 기간 / 지출 프로그레스 바 */}
-                  <div className="px-5 py-3 space-y-2 border-t border-gray-200">
+                  {/* 지출 / 수입 / 이체 3유형 — 전월 대비 증감 포함 */}
+                  <div className="px-4 py-2.5 flex-1 flex items-center">
+                    <div className="grid grid-cols-3 gap-2 w-full divide-x divide-gray-100">
+                      {(() => {
+                        const dExp = expense - prevMonthExpense
+                        const dInc = income - prevMonthIncome
+                        const dTra = transfer - prevMonthTransfer
+                        const delta = (d: number, goodWhenDown: boolean) => {
+                          if (viewMode !== 'month' || d === 0) return null
+                          const up = d > 0
+                          const good = goodWhenDown ? !up : up
+                          return <span className={`text-[9px] font-semibold tabular-nums ${good ? 'text-green-600' : 'text-red-500'}`}>{up ? '▲' : '▼'}{fmtW(Math.abs(d))}</span>
+                        }
+                        return <>
+                          <div>
+                            <p className="text-[9px] font-bold tracking-[0.14em] uppercase text-gray-400 mb-0.5">지출</p>
+                            <p className="text-[13px] font-bold text-gray-900 tabular-nums leading-none">{fmtW(expense)}</p>
+                            <p className="mt-0.5 leading-none">{delta(dExp, true) ?? <span className="text-[9px] text-gray-300">—</span>}</p>
+                          </div>
+                          <div className="pl-2">
+                            <p className="text-[9px] font-bold tracking-[0.14em] uppercase text-gray-400 mb-0.5">수입</p>
+                            <p className="text-[13px] font-bold text-green-600 tabular-nums leading-none">{fmtW(income)}</p>
+                            <p className="mt-0.5 leading-none">{delta(dInc, false) ?? <span className="text-[9px] text-gray-300">—</span>}</p>
+                          </div>
+                          <div className="pl-2">
+                            <p className="text-[9px] font-bold tracking-[0.14em] uppercase text-gray-400 mb-0.5">이체</p>
+                            <p className="text-[13px] font-bold text-gray-500 tabular-nums leading-none">{transfer > 0 ? fmtW(transfer) : '—'}</p>
+                            <p className="mt-0.5 leading-none">{viewMode === 'month' && dTra !== 0 ? <span className="text-[9px] text-gray-400 tabular-nums">{dTra > 0 ? '▲' : '▼'}{fmtW(Math.abs(dTra))}</span> : <span className="text-[9px] text-gray-300">—</span>}</p>
+                          </div>
+                        </>
+                      })()}
+                    </div>
+                  </div>
+                  {/* 수입 중 지출 비중 바 + 순수입 */}
+                  <div className="px-4 py-3 flex-1 flex flex-col justify-center">
                     {(() => {
-                      const dPct = Math.min(Math.round(elapsedDays / totalDays * 100), 100)
                       const ePct = income > 0 ? Math.min(Math.round(expense / income * 100), 100) : 0
+                      const sPct = income > 0 ? Math.max(100 - ePct, 0) : 0
                       return <>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-gray-500 w-6 shrink-0">기간</span>
-                          <div className="flex-1 h-1.5 bg-gray-100">
-                            <div className="h-full bg-gray-400" style={{ width: `${dPct}%` }} />
-                          </div>
-                          <span className="text-[10px] text-gray-400 tabular-nums w-7 text-right shrink-0">{dPct}%</span>
+                        <div className="flex items-center justify-between mb-1.5">
+                          <span className="text-[9px] font-bold tracking-[0.14em] uppercase text-gray-400">
+                            수입 중 지출 {income > 0 ? <span className="text-red-500">{ePct}%</span> : ''}
+                          </span>
+                          <span className="text-[11px] tabular-nums">
+                            <span className="text-[9px] font-bold tracking-[0.14em] uppercase text-gray-400 mr-1">순수입</span>
+                            <span className={`font-bold ${net < 0 ? 'text-red-500' : 'text-blue-600'}`}>
+                              {net < 0 ? `-${fmtW(-net)}` : fmtW(net)}
+                            </span>
+                          </span>
                         </div>
-                        <div className="flex items-center gap-2">
-                          <span className="text-[10px] text-gray-500 w-6 shrink-0">지출</span>
-                          <div className="flex-1 h-1.5 bg-gray-100">
-                            <div className={`h-full ${ePct > dPct ? 'bg-red-400' : 'bg-gray-700'}`} style={{ width: `${ePct}%` }} />
-                          </div>
-                          <span className="text-[10px] text-gray-400 tabular-nums w-7 text-right shrink-0">{ePct}%</span>
+                        {/* 스택 바 — 지출(빨강) + 순수입(파랑) */}
+                        <div className="flex h-2 overflow-hidden bg-gray-100">
+                          <div className="bg-red-400 h-full transition-all" style={{ width: `${ePct}%` }} />
+                          <div className="bg-blue-400 h-full transition-all" style={{ width: `${sPct}%` }} />
                         </div>
+                        <p className="text-[9px] text-gray-400 mt-1 tabular-nums">지출 {fmtW(expense)} / 수입 {fmtW(income)}</p>
                       </>
                     })()}
                   </div>
-                  {/* 예측 */}
-                  <div className="px-5 py-3 border-t border-gray-200">
-                    <p className="text-[9px] font-bold tracking-[0.18em] uppercase text-gray-400 mb-1.5">
-                      Projected{isCurrent && daysLeft > 0 ? ` · ${daysLeft}일 남음` : ''}
+                </div>
+
+                {/* 우: 인사이트 전용 */}
+                <div className="w-1/2 min-w-0 px-4 py-3 bg-gray-50 flex flex-col gap-2">
+                  <p className="text-[9px] font-bold tracking-[0.14em] uppercase text-gray-400">💡 INSIGHT</p>
+                  {/* 전월 대비 */}
+                  {prevMonthExpense > 0 && (
+                    <p className="text-[12px] text-gray-700 leading-relaxed">
+                      전월보다{' '}
+                      <span className={`font-bold tabular-nums ${expense <= prevMonthExpense ? 'text-green-600' : 'text-red-500'}`}>
+                        {fmtW(Math.abs(expense - prevMonthExpense))}
+                      </span>
+                      {expense <= prevMonthExpense ? ' 덜 썼어요' : ' 더 썼어요'}
                     </p>
-                    {projected != null ? (
-                      <p className={`text-sm font-semibold tabular-nums ${projected > income ? 'text-red-500' : 'text-gray-800'}`}>
-                        {fmtW(projected)}
+                  )}
+                  {/* 고정 / 변동 분해 */}
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-gray-600">고정비</span>
+                      <span className="tabular-nums">
+                        <span className="font-semibold text-gray-800">{fmtW(fixedTotal)}</span>
+                        <span className="text-gray-400 ml-1">{fixedPct}%</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between text-[11px]">
+                      <span className="text-gray-600">변동지출</span>
+                      <span className="tabular-nums">
+                        <span className="font-semibold text-gray-800">{fmtW(varTotal)}</span>
+                        <span className="text-gray-400 ml-1">{varPct}%</span>
+                      </span>
+                    </div>
+                  </div>
+                  {/* 순수입 코멘트 */}
+                  {income > 0 && (
+                    net >= 0 ? (
+                      <p className="text-[11px] text-gray-500 mt-auto pt-1 border-t border-gray-200 tabular-nums">
+                        수입의 <span className="font-semibold text-gray-700">{Math.round((net / income) * 100)}%</span>를 남겼어요
                       </p>
                     ) : (
-                      <p className="text-sm font-semibold text-gray-300">—</p>
-                    )}
-                  </div>
+                      <p className="text-[11px] text-gray-500 mt-auto pt-1 border-t border-gray-200 tabular-nums">
+                        지출이 수입을 <span className="font-semibold text-red-500">{Math.round((-net / income) * 100)}%</span> 초과했어요
+                      </p>
+                    )
+                  )}
                 </div>
               </div>
 
@@ -677,14 +774,147 @@ export default function Overview2Page() {
           {/* ── TREND ── */}
           <div>
             <SectionLabel label="Trend — 지출 추이" />
-            <div className="bg-white border border-gray-300 [&>div]:rounded-none [&>div]:border-0 [&>div]:shadow-none">
-              <TrendLineSection
-                records={filteredRecords}
-                refMonth={activeMonth ?? ''}
-                viewMode={viewMode}
-                activeYear={activeYear}
-                compact
-              />
+            <div className="bg-white border border-gray-300 px-5 py-4">
+              {trendData.points.length === 0 || expense === 0 ? (
+                <p className="text-xs text-gray-400 py-6 text-center">지출 데이터가 없어요.</p>
+              ) : (() => {
+                const pts = trendData.points
+                const n = pts.length
+                const fixed = trendData.fixed
+                const last = pts[n - 1]
+
+                const yMax = niceCeil(Math.max(...pts.map(p => p.cumWithFixed), fixed, 1))
+                const yTicks = [1, 0.5, 0]
+
+                const PAD = 6
+                const px = (i: number) => n === 1 ? 50 : PAD + (i / (n - 1)) * (100 - PAD * 2)
+                const py = (v: number) => 100 - (v / yMax) * 100
+                const fixedY = py(fixed)                          // 고정비선 y(%)
+                const dailyMax = Math.max(...pts.map(p => p.daily), 1)
+
+                // 누적선 — 모노톤 큐빅 (고정비에서 시작)
+                const linePts = pts.map((p, i) => [px(i), py(p.cumWithFixed)] as const)
+                const clampY = (y: number) => Math.max(0, Math.min(100, y))
+                let linePath = linePts.length ? `M ${linePts[0][0]} ${linePts[0][1]}` : ''
+                for (let i = 0; i < linePts.length - 1; i++) {
+                  const p0 = linePts[i - 1] ?? linePts[i], p1 = linePts[i], p2 = linePts[i + 1], p3 = linePts[i + 2] ?? p2
+                  const c1x = p1[0] + (p2[0] - p0[0]) / 6 * 0.5, c1y = clampY(p1[1] + (p2[1] - p0[1]) / 6 * 0.5)
+                  const c2x = p2[0] - (p3[0] - p1[0]) / 6 * 0.5, c2y = clampY(p2[1] - (p3[1] - p1[1]) / 6 * 0.5)
+                  linePath += ` C ${c1x} ${c1y}, ${c2x} ${c2y}, ${p2[0]} ${p2[1]}`
+                }
+                const varPct = expense > 0 ? Math.round((varTotal / expense) * 100) : 0
+
+                return (
+                  <>
+                    <div className="flex items-center justify-between mb-6">
+                      <p className="text-[11px] font-semibold text-gray-800">지출 {viewMode === 'month' ? '일별' : '월별'} 추이</p>
+                      <div className="flex items-center gap-3 text-[10px] text-gray-400">
+                        <span className="flex items-center gap-1"><span className="w-2 h-1.5 rounded-sm bg-gray-300" />{viewMode === 'month' ? '일별' : '월별'} 변동</span>
+                        <span className="flex items-center gap-1"><span className="w-1.5 h-1.5 rounded-full bg-gray-700" />누적</span>
+                        <span className="flex items-center gap-1"><span className="w-3 h-0 border-t border-dashed border-orange-400" />고정비</span>
+                      </div>
+                    </div>
+
+                    {/* 차트 영역 */}
+                    <div className="flex relative">
+                      {/* y 그리드 — 끝까지 */}
+                      {yTicks.map((r, i) => (
+                        <div key={i} className="absolute left-0 right-0 border-t border-gray-200"
+                          style={{ top: `${(i / (yTicks.length - 1)) * 100}%` }} />
+                      ))}
+
+                      {/* 좌축 */}
+                      <div className="w-10 shrink-0 relative h-24">
+                        {yTicks.map((r, i) => (
+                          <span key={i} className="absolute right-1.5 text-[9px] text-gray-400 tabular-nums -translate-y-1/2 bg-white px-0.5"
+                            style={{ top: `${(i / (yTicks.length - 1)) * 100}%` }}>
+                            {fmtW(Math.round(yMax * r))}
+                          </span>
+                        ))}
+                      </div>
+
+                      {/* 플롯 */}
+                      <div className="relative flex-1 h-24">
+                        {/* 고정비 영역 (바닥~고정선) */}
+                        {fixed > 0 && (
+                          <div className="absolute left-0 right-0 bottom-0 bg-orange-50"
+                            style={{ height: `${100 - fixedY}%` }} />
+                        )}
+                        {/* 고정비 기준선 */}
+                        {fixed > 0 && (
+                          <div className="absolute left-0 right-0 border-t border-dashed border-orange-400"
+                            style={{ top: `${fixedY}%` }} />
+                        )}
+
+                        {/* 일별 변동 막대 (고정선 위에서) */}
+                        {pts.map((p, i) => p.daily > 0 && (
+                          <div key={p.key}
+                            className="absolute -translate-x-1/2 bg-gray-300 rounded-sm"
+                            style={{
+                              left: `${px(i)}%`,
+                              width: `${viewMode === 'month' ? 1.6 : 3}%`,
+                              bottom: `${100 - fixedY}%`,
+                              height: `${(p.daily / dailyMax) * fixedY}%`,
+                            }} />
+                        ))}
+
+                        {/* 누적선 */}
+                        <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full">
+                          <path d={linePath} fill="none" stroke="#374151" strokeWidth={2}
+                            strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                        </svg>
+
+                        {/* 끝점 + 총지출 라벨 */}
+                        <div className="absolute -translate-x-1/2 -translate-y-1/2"
+                          style={{ left: `${px(n - 1)}%`, top: `${py(last.cumWithFixed)}%` }}>
+                          <span className="absolute left-1/2 -translate-x-1/2 -top-4 whitespace-nowrap text-[10px] font-bold text-gray-800 tabular-nums">
+                            {fmtW(last.cumWithFixed)}
+                          </span>
+                          <div className="w-2 h-2 rounded-full bg-white border-[1.5px] border-gray-700" />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* x축 라벨 */}
+                    <div className="flex mt-1">
+                      <div className="w-10 shrink-0" />
+                      <div className="relative flex-1 h-4">
+                        {pts.map((p, i) => (
+                          <span key={p.key}
+                            className={`absolute -translate-x-1/2 tabular-nums ${viewMode === 'month' ? 'text-[7px]' : 'text-[9px]'} ${
+                              p.weekend ? 'text-red-400' : 'text-gray-500'
+                            } ${i === n - 1 ? 'font-bold' : ''}`}
+                            style={{ left: `${px(i)}%` }}>
+                            {p.label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 요약 지표 3칸 */}
+                    <div className="grid grid-cols-3 divide-x divide-gray-300 mt-3 pt-3 border-t border-gray-300">
+                      <div className="px-2 flex items-baseline justify-between gap-2">
+                        <span className="text-[9px] font-bold tracking-wider uppercase text-gray-400 shrink-0">고정비</span>
+                        <div className="text-right">
+                          <span className="text-[13px] font-bold text-gray-800 tabular-nums">{fmtW(fixed)}</span>
+                          <span className="text-[9px] text-gray-400 tabular-nums ml-1">{expense > 0 ? Math.round((fixed / expense) * 100) : 0}%</span>
+                        </div>
+                      </div>
+                      <div className="px-3 flex items-baseline justify-between gap-2">
+                        <span className="text-[9px] font-bold tracking-wider uppercase text-gray-400 shrink-0">변동지출</span>
+                        <div className="text-right">
+                          <span className="text-[13px] font-bold text-gray-800 tabular-nums">{fmtW(varTotal)}</span>
+                          <span className="text-[9px] text-gray-400 tabular-nums ml-1">{varPct}%</span>
+                        </div>
+                      </div>
+                      <div className="px-3 flex items-baseline justify-between gap-2">
+                        <span className="text-[9px] font-bold tracking-wider uppercase text-gray-400 shrink-0">총 지출</span>
+                        <span className="text-[13px] font-bold text-gray-800 tabular-nums">{fmtW(expense)}</span>
+                      </div>
+                    </div>
+                  </>
+                )
+              })()}
             </div>
           </div>
 

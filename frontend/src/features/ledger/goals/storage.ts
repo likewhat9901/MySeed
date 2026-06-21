@@ -106,7 +106,7 @@ export function useResolutions() {
     save(RESOLUTION_KEY, next)
   }, [])
 
-  const add = useCallback((r: Pick<Resolution, 'ledId' | 'targetMonth' | 'text'>) => {
+  const add = useCallback((r: Pick<Resolution, 'ledId' | 'targetMonth' | 'text'> & Partial<Pick<Resolution, 'emoji' | 'category' | 'baselineAmount'>>) => {
     const item: Resolution = {
       ...r, id: newId(), status: 'none', brokenCount: 0, createdAt: new Date().toISOString(),
     }
@@ -135,7 +135,7 @@ export function useRetrospectives() {
   }, [])
 
   // 월별 1개 — 있으면 갱신, 없으면 생성
-  const upsert = useCallback((ledId: string | null, month: string, patch: Partial<Pick<Retrospective, 'good' | 'bad' | 'next'>>) => {
+  const upsert = useCallback((ledId: string | null, month: string, patch: Partial<Pick<Retrospective, 'good' | 'bad' | 'next' | 'mood' | 'note'>>) => {
     const existing = items.find(r => r.month === month && (r.ledId === ledId || r.ledId === null))
     if (existing) {
       persist(items.map(r => r.id === existing.id ? { ...r, ...patch, updatedAt: new Date().toISOString() } : r))

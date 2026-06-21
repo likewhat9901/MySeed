@@ -40,8 +40,8 @@ export default function MappingTemplateRow({ mapping, index, onDelete }: Props) 
   }, [menuOpen])
 
   return (
-    <div className="flex items-center gap-4 bg-white border border-gray-200 rounded-xl px-4 py-3 hover:shadow-sm transition-shadow">
-      <div className={`w-10 h-10 shrink-0 rounded-lg bg-gradient-to-br ${color} flex items-center justify-center`}>
+    <div className="flex items-center gap-4 bg-white border border-gray-300 px-4 py-3 hover:border-gray-800 transition-colors">
+      <div className={`w-10 h-10 shrink-0 bg-gradient-to-br ${color} flex items-center justify-center`}>
         <Link2 className="size-4 text-white/70" />
       </div>
 
@@ -62,7 +62,7 @@ export default function MappingTemplateRow({ mapping, index, onDelete }: Props) 
         </button>
 
         {menuOpen && (
-          <div className="absolute right-0 top-5 z-20 w-32 bg-white border border-gray-200 rounded-xl shadow-lg py-1 text-sm">
+          <div className="absolute right-0 top-5 z-20 w-32 bg-white border border-gray-300 shadow-md py-1 text-sm">
             <button
               type="button"
               onClick={() => { setMenuOpen(false); onDelete(mapping.map_id) }}

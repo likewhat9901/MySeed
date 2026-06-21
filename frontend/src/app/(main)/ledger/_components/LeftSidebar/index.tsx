@@ -40,6 +40,35 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
   const sortRows = (rows: RecordSummary[]) =>
     [...rows].sort((a, b) => a.regist_dt.localeCompare(b.regist_dt))
 
+  // 비활성 카드에 보여줄 "n건 · 업데이트 시점" 텍스트
+  function ledgerMeta(recs: RecordSummary[] | undefined): string {
+    if (recs === undefined) return '…'
+    if (recs.length === 0) return '0건'
+    const latest = recs.reduce((max, r) => r.update_dt > max ? r.update_dt : max, recs[0].update_dt)
+    return `${recs.length}건 · ${relativeDate(latest)}`
+  }
+
+  function relativeDate(dt: string): string {
+    if (!dt) return '-'
+    const diffDays = Math.floor((Date.now() - new Date(dt).getTime()) / 86400000)
+    if (diffDays <= 0) return '오늘'
+    if (diffDays === 1) return '1일 전'
+    if (diffDays < 30) return `${diffDays}일 전`
+    const diffMonths = Math.floor(diffDays / 30)
+    if (diffMonths < 12) return `${diffMonths}개월 전`
+    return `${Math.floor(diffMonths / 12)}년 전`
+  }
+
+  // 카드에 건수·최근 업데이트를 표시하기 위해 모든 가계부의 record 목록을 미리 로드
+  useEffect(() => {
+    for (const ledger of ledgers) {
+      if (recordMap[ledger.led_id] !== undefined) continue
+      getRecordList(ledger.led_id).then(rows =>
+        setRecordMap(prev => ({ ...prev, [ledger.led_id]: sortRows(rows) }))
+      )
+    }
+  }, [ledgers])
+
   // 현재 선택된 가계부는 자동으로 펼치고 record 목록도 로드
   useEffect(() => {
     if (!canvasId) return
@@ -172,16 +201,16 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
               ledgers.map(ledger => {
                 const isExpanded = openLedgers.has(ledger.led_id)
                 const isActive   = ledger.led_id === currentLedId
-                const recs       = recordMap[ledger.led_id] ?? []
+                const recs       = recordMap[ledger.led_id]
 
                 return (
-                  <div key={ledger.led_id}>
+                  <div key={ledger.led_id} className="mx-2 mb-1.5 border border-gray-200">
                     {/* 가계부 행 */}
                     <div
                       className={`group flex items-center gap-1 px-2 py-1.5 cursor-pointer transition-colors border-l-2 ${
                         isActive
-                          ? 'border-gray-800 bg-gray-50 text-gray-900'
-                          : 'border-transparent text-gray-600 hover:bg-gray-50'
+                          ? 'border-l-gray-800 bg-gray-50 text-gray-900'
+                          : 'border-l-transparent text-gray-600 hover:bg-gray-50'
                       }`}
                     >
                       <button
@@ -196,15 +225,18 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
                       >
                         {ledger.led_name}
                       </span>
+                      <span className="shrink-0 text-[10px] text-gray-400 tabular-nums">
+                        {ledgerMeta(recs)}
+                      </span>
                     </div>
 
                     {/* record 목록 */}
                     {isExpanded && (
                       <div className="ml-5 border-l border-gray-200 mb-1">
-                        {recs.length === 0 ? (
+                        {(recs ?? []).length === 0 ? (
                           <p className="px-2 py-1 text-[11px] text-gray-300">내역 없음</p>
                         ) : (
-                          recs.map(rec => {
+                          (recs ?? []).map(rec => {
                             const isRecActive = rec.rec_id === currentRecId
                             return (
                               <div

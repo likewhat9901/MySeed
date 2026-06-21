@@ -40,9 +40,9 @@ export default function MappingTemplateCard({ mapping, index, onDelete }: Props)
   }, [menuOpen])
 
   return (
-    <div className="bg-white border border-seed-muted rounded-2xl hover:shadow-[0_4px_20px_-4px_rgba(45,140,78,0.15)] transition-shadow">
+    <div className="bg-white border border-gray-300 hover:border-gray-800 transition-colors">
       {/* 썸네일 */}
-      <div className={`h-24 rounded-t-2xl bg-gradient-to-br ${color} flex items-center justify-center`}>
+      <div className={`h-24 bg-gradient-to-br ${color} flex items-center justify-center`}>
         <Link2 className="size-7 text-white/70" />
       </div>
 
@@ -60,7 +60,7 @@ export default function MappingTemplateCard({ mapping, index, onDelete }: Props)
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 top-5 z-20 w-32 bg-white border border-gray-200 rounded-xl shadow-lg py-1 text-sm">
+              <div className="absolute right-0 top-5 z-20 w-32 bg-white border border-gray-300 shadow-md py-1 text-sm">
                 <button
                   type="button"
                   onClick={() => { setMenuOpen(false); onDelete(mapping.map_id) }}

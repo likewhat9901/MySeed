@@ -1,7 +1,6 @@
 // 내역 탭 — 거래 내역 테이블 (헤더 액션은 RecordsLayout 타이틀 줄에서 담당)
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
 import { Trash2 } from 'lucide-react'
 import { RECORD_COLUMN_LABELS } from '@/features/ledger/record/types'
 import type { LedgerRecord, ReviewRating, RecordColumn, Currency } from '@/features/ledger/record/types'
@@ -16,77 +15,33 @@ interface RecordTableProps {
 
 const CURRENCIES: Currency[] = ['KRW', 'USD', 'EUR', 'JPY', 'CNY']
 
-const REVIEW_OPTIONS: { value: Exclude<ReviewRating, null>; label: string; activeColor: string }[] = [
-  { value: 'good', label: '만족', activeColor: 'text-green-600' },
-  { value: 'soso', label: '보통', activeColor: 'text-gray-500' },
-  { value: 'bad',  label: '후회', activeColor: 'text-red-500'  },
-]
-
-const REVIEW_LABEL: Record<Exclude<ReviewRating, null>, { label: string; cls: string }> = {
-  good: { label: '만족', cls: 'text-green-600' },
-  soso: { label: '보통', cls: 'text-gray-400'  },
-  bad:  { label: '후회', cls: 'text-red-500'   },
+function RegretToggle({ value, onChange }: { value: ReviewRating; onChange: (v: ReviewRating) => void }) {
+  const active = value === 'bad'
+  return (
+    <button
+      onClick={() => onChange(active ? null : 'bad')}
+      className={`text-[10px] font-semibold px-1.5 py-0.5 border transition-all select-none ${
+        active
+          ? 'border-red-400 text-red-500 bg-red-50'
+          : 'border-gray-200 text-gray-300 hover:border-gray-300 hover:text-gray-400'
+      }`}
+    >
+      후회
+    </button>
+  )
 }
 
 const COLUMNS: RecordColumn[] = ['date', 'time', 'type', 'category', 'subcategory', 'description', 'amount', 'currency', 'paymentMethod', 'memo']
 
 // 고정성 컬럼은 min-width로 최소폭만 보장, 텍스트 컬럼(내용/메모/결제수단)은 남는 공간 분배
 const COL_MIN_WIDTH: Partial<Record<RecordColumn, number>> = {
-  date: 96, time: 52, type: 60, category: 68, subcategory: 58,
-  amount: 76, currency: 64,
-  description: 140, paymentMethod: 96, memo: 120,
+  date: 92, time: 48, type: 66, category: 78, subcategory: 74,
+  amount: 76, currency: 66,
+  description: 170, paymentMethod: 150, memo: 120,
 }
+// 남는 공간을 받아 늘어나는 텍스트 컬럼 (나머지는 콘텐츠 폭 고정)
+const FLEX_COLUMNS = new Set<RecordColumn>(['description', 'paymentMethod', 'memo'])
 
-function ReviewCell({ value, onChange }: { value: ReviewRating; onChange: (v: ReviewRating) => void }) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!open) return
-    function handler(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', handler)
-    return () => document.removeEventListener('mousedown', handler)
-  }, [open])
-
-  const OPTIONS: { value: ReviewRating; label: string; cls: string }[] = [
-    ...REVIEW_OPTIONS.map(o => ({ value: o.value as ReviewRating, label: o.label, cls: o.activeColor })),
-    { value: null, label: '—', cls: 'text-gray-400' },
-  ]
-
-  return (
-    <div ref={ref} className="relative flex items-center justify-center h-full">
-      {/* 클릭 트리거 */}
-      <button
-        onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-0.5 select-none"
-      >
-        {value
-          ? <span className={`text-[11px] font-semibold ${REVIEW_LABEL[value].cls}`}>{REVIEW_LABEL[value].label}</span>
-          : <span className="text-[11px] text-gray-200">—</span>
-        }
-        <span className="text-[9px] text-gray-300">▾</span>
-      </button>
-
-      {/* 드롭다운 */}
-      {open && (
-        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-0.5 z-30 bg-white border border-gray-300 shadow-md min-w-[56px]">
-          {OPTIONS.map(opt => (
-            <button
-              key={String(opt.value)}
-              onClick={() => { onChange(opt.value); setOpen(false) }}
-              className={`flex items-center gap-1.5 w-full px-3 py-1.5 text-[11px] font-semibold hover:bg-gray-50 transition-colors ${opt.cls}`}
-            >
-              <span className="w-2.5 shrink-0">{value === opt.value ? '✓' : ''}</span>
-              {opt.label}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 export default function RecordTable({ records = [], selectedColumn, onChange, onColumnSelect, visibleColumns }: RecordTableProps) {
   const cols = COLUMNS.filter(c => visibleColumns.includes(c))
@@ -115,14 +70,19 @@ export default function RecordTable({ records = [], selectedColumn, onChange, on
         <thead className="sticky top-0 bg-white z-10">
           <tr className="border-b border-gray-200">
             <th className="" />
-            <th className="px-1.5 py-1.5 text-center text-[10px] font-semibold text-gray-400 tracking-wider whitespace-nowrap">리뷰</th>
+            <th className="px-1.5 py-1.5 text-center text-[10px] font-semibold text-gray-400 tracking-wider whitespace-nowrap w-10">후회</th>
             {cols.map(col => {
               const isSelected = selectedColumn === col
               return (
                 <th
                   key={col}
                   onClick={() => onColumnSelect(col)}
-                  style={{ minWidth: COL_MIN_WIDTH[col] ?? 100 }}
+                  style={{
+                    minWidth: COL_MIN_WIDTH[col] ?? 100,
+                    width: FLEX_COLUMNS.has(col)
+                      ? (col === 'description' ? '40%' : col === 'paymentMethod' ? '32%' : '28%')
+                      : 1,
+                  }}
                   className={`px-1.5 py-1.5 text-center text-[10px] font-semibold tracking-wider whitespace-nowrap cursor-pointer select-none transition-colors ${
                     isSelected
                       ? 'text-brand bg-brand/5 border-b-2 border-brand'
@@ -146,11 +106,11 @@ export default function RecordTable({ records = [], selectedColumn, onChange, on
           )}
           {records.map((r, i) => (
             <tr key={r.id} className={`group transition-colors hover:bg-blue-50/40 ${i % 2 === 1 ? 'bg-gray-50/60' : 'bg-white'}`}>
-              <td className="px-1 py-1.5 border-b border-gray-100">
+              <td className="px-2 py-1.5 border-b border-gray-100">
                 <button onClick={() => removeRow(r.id)} className="text-gray-300 hover:text-red-400 transition-colors"><Trash2 size={11} /></button>
               </td>
-              <td className={cellCls}>
-                <ReviewCell value={r.review} onChange={v => updateRow(r.id, { review: v })} />
+              <td className={`${cellCls} w-10`}>
+                <RegretToggle value={r.review} onChange={v => updateRow(r.id, { review: v })} />
               </td>
               {cols.includes('date') && <td className={cellCls}><input type="date" value={r.date} onChange={e => updateRow(r.id, { date: e.target.value })} className="bg-transparent outline-none text-[11px] text-gray-700 inline-block w-auto" /></td>}
               {cols.includes('time') && <td className={cellCls}><input type="text" value={r.time ?? ''} onChange={e => updateRow(r.id, { time: e.target.value || null })} placeholder="--:--" className={inputCls} /></td>}

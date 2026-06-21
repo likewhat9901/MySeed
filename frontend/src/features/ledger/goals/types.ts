@@ -13,6 +13,7 @@ export interface SavingsGoal {
   id:            string
   ledId:         string | null
   name:          string
+  emoji?:        string         // 목표 아이콘 (선택)
   targetAmount:  number
   monthlyTarget: number         // 월 적립 목표액 (0이면 미설정)
   deadline:      string | null  // 'YYYY-MM' or 'YYYY-MM-DD'
@@ -39,9 +40,15 @@ export interface Resolution {
   status:       ResolutionStatus
   brokenCount:  number          // 어긴 횟수
   createdAt:    string
+  emoji?:       string          // 다짐 아이콘 (선택)
+  category?:    string          // 연결 카테고리 (지난달 대비 자동 비교용)
+  baselineAmount?: number       // 다짐 생성 시점의 해당 카테고리 지출 (기준선)
+  note?:        string          // 회고 메모 (지킴/못지킴 이유)
 }
 
 // 월말 회고 — 월별 1개
+export type RetroMood = 'tight' | 'soso' | 'okay' | 'proud'
+
 export interface Retrospective {
   id:           string
   ledId:        string | null
@@ -50,4 +57,6 @@ export interface Retrospective {
   bad:          string
   next:         string
   updatedAt:    string
+  mood?:        RetroMood        // 이번달 돈 관리 기분
+  note?:        string          // 한마디 회고 (good/bad/next 통합 대체)
 }

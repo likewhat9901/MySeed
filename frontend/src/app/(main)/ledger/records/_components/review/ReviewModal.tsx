@@ -2,7 +2,7 @@
 'use client'
 
 import { useMemo, useRef, useState } from 'react'
-import { X, ChevronRight, ChevronDown, ChevronUp, Settings2 } from 'lucide-react'
+import { X, ChevronDown, ChevronUp, Settings2 } from 'lucide-react'
 import type { LedgerRecord, ReviewRating } from '@/features/ledger/record/types'
 import { useReviewSettings } from '@/features/ledger/record/reviewSettings'
 
@@ -13,12 +13,6 @@ interface Props {
   onOpenRules: () => void                                       // 규칙 모달 열기
 }
 
-const RATINGS: { value: Exclude<ReviewRating, null>; label: string; activeColor: string }[] = [
-  { value: 'good', label: '만족', activeColor: 'text-green-600 border-green-400 bg-green-50' },
-  { value: 'soso', label: '보통', activeColor: 'text-gray-600 border-gray-400 bg-gray-50'  },
-  { value: 'bad',  label: '후회', activeColor: 'text-red-500 border-red-400 bg-red-50'    },
-]
-
 function fmt(n: number) {
   return `₩${n.toLocaleString()}`
 }
@@ -27,24 +21,19 @@ function fmtShort(n: number) {
   return `₩${n.toLocaleString()}`
 }
 
-/* 만족·보통·후회 텍스트 인라인 버튼 그룹 */
-function RatingButtons({ value, onPick }: { value: ReviewRating; onPick: (v: ReviewRating) => void }) {
+function RegretToggle({ value, onPick }: { value: ReviewRating; onPick: (v: ReviewRating) => void }) {
+  const active = value === 'bad'
   return (
-    <div className="flex items-center gap-1 shrink-0">
-      {RATINGS.map(r => (
-        <button
-          key={r.value}
-          onClick={() => onPick(value === r.value ? null : r.value)}
-          className={`text-[10px] font-semibold px-1.5 py-0.5 border transition-all ${
-            value === r.value
-              ? r.activeColor
-              : 'border-gray-200 text-gray-300 hover:text-gray-500 hover:border-gray-300'
-          }`}
-        >
-          {r.label}
-        </button>
-      ))}
-    </div>
+    <button
+      onClick={() => onPick(active ? null : 'bad')}
+      className={`text-[10px] font-semibold px-1.5 py-0.5 border transition-all shrink-0 ${
+        active
+          ? 'border-red-400 text-red-500 bg-red-50'
+          : 'border-gray-200 text-gray-300 hover:text-gray-500 hover:border-gray-300'
+      }`}
+    >
+      후회
+    </button>
   )
 }
 
@@ -52,41 +41,20 @@ export default function ReviewModal({ records, onComplete, onClose, onOpenRules 
   const { settings } = useReviewSettings()
   const [openCats, setOpenCats] = useState<Set<string>>(new Set())
   const [openAuto, setOpenAuto] = useState<Set<string>>(new Set())
-  const [filter, setFilter] = useState<'todo' | 'done' | 'all'>('todo')
+  const [filter, setFilter] = useState<'all' | 'bad'>('all')
   const [step, setStep] = useState<'review' | 'loading' | 'done'>('review')
   const [completedCount, setCompletedCount] = useState(0)
   const [confirmReset, setConfirmReset] = useState(false)
   const pendingUpdates = useRef<Record<string, ReviewRating>>({})
   const bodyRef = useRef<HTMLDivElement>(null)
 
-  // draft 초기값 — smallDefaults 카테고리의 소액·미점검 항목을 만족으로 미리 채움
-  const [draft, setDraft] = useState<Record<string, ReviewRating>>(() => {
-    const init: Record<string, ReviewRating> = {}
-    const small = settings.smallAmount
-    const fixed = new Set(settings.fixedCategories)
-    const exclude = new Set(settings.exclude)
-    const always = new Set(settings.alwaysReview)
-    const autoGood = new Set(settings.smallDefaults)
-    for (const r of records) {
-      if (r.type !== '지출' || r.amount <= 0) continue
-      if (r.review !== null || r.isFixed || fixed.has(r.category) || exclude.has(r.category)) continue
-      if (r.amount >= small || always.has(r.category)) continue
-      if (autoGood.has(r.category)) init[r.id] = 'good'
-    }
-    return init
-  })
+  const [draft, setDraft] = useState<Record<string, ReviewRating>>({})
   const reviewOf = (r: LedgerRecord): ReviewRating => (r.id in draft ? draft[r.id] : r.review)
 
   function setOne(id: string, v: ReviewRating) {
     setDraft(prev => ({ ...prev, [id]: v }))
   }
-  function setMany(ids: string[], v: ReviewRating) {
-    setDraft(prev => {
-      const next = { ...prev }
-      for (const id of ids) next[id] = v
-      return next
-    })
-  }
+  const [confirmComplete, setConfirmComplete] = useState(false)
 
   const { needBig, needAlways, smallByCat, fixedItems, excludedItems, reviewTargets } = useMemo(() => {
     const expenses = records.filter(r => r.type === '지출' && r.amount > 0)
@@ -132,23 +100,18 @@ export default function ReviewModal({ records, onComplete, onClose, onOpenRules 
     return { needBig, needAlways, smallByCat, fixedItems, excludedItems, reviewTargets }
   }, [records, settings])
 
-  // 진행도 — 점검 대상 전체(고정·제외 제외) 중 review가 채워진 건수 (draft 우선)
-  const reviewed = reviewTargets.filter(r => reviewOf(r) !== null).length
-  const total = reviewTargets.length
-  const remaining = total - reviewed
+  // 후회 건수·금액 집계 (draft 우선)
+  const regretCount = reviewTargets.filter(r => reviewOf(r) === 'bad').length
+  const regretAmt   = reviewTargets.filter(r => reviewOf(r) === 'bad').reduce((s, r) => s + r.amount, 0)
 
-  // ①② 표시 필터 — 원본 review 기준이라 리뷰를 눌러도 항목이 사라지지 않음
   function visible<T extends LedgerRecord>(rows: T[]): T[] {
-    if (filter === 'todo') return rows.filter(r => r.review === null)
-    if (filter === 'done') return rows.filter(r => r.review !== null)
+    if (filter === 'bad') return rows.filter(r => reviewOf(r) === 'bad')
     return rows
   }
   const FILTERS: { key: typeof filter; label: string }[] = [
-    { key: 'todo', label: `미점검 ${remaining}` },
-    { key: 'done', label: `점검완료 ${reviewed}` },
-    { key: 'all',  label: `전체 ${total}` },
+    { key: 'all', label: `전체 ${reviewTargets.length}` },
+    { key: 'bad', label: `후회 ${regretCount}` },
   ]
-  const pct = total > 0 ? Math.round((reviewed / total) * 100) : 0
 
   function toggleCat(cat: string) {
     setOpenCats(prev => {
@@ -190,7 +153,7 @@ export default function ReviewModal({ records, onComplete, onClose, onOpenRules 
         <span className="text-[11px] text-gray-800 truncate flex-1 min-w-0">{r.description || '(내용 없음)'}</span>
         <span className="text-[10px] text-gray-400 w-16 shrink-0 truncate">{r.category}</span>
         <span className="text-[11px] font-semibold text-gray-900 tabular-nums w-20 text-right shrink-0">{r.amount.toLocaleString()}</span>
-        <RatingButtons value={reviewOf(r)} onPick={v => setOne(r.id, v)} />
+        <RegretToggle value={reviewOf(r)} onPick={v => setOne(r.id, v)} />
       </div>
     )
   }
@@ -267,7 +230,7 @@ export default function ReviewModal({ records, onComplete, onClose, onOpenRules 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4">
-      <div className="bg-white w-[600px] max-h-[88vh] border border-gray-300 shadow-xl flex flex-col">
+      <div className="bg-white w-[600px] h-[88vh] border border-gray-300 shadow-xl flex flex-col">
 
         {/* 상단 고정 — 진행도 바 */}
         <div className="px-5 py-3 border-b border-gray-300 shrink-0">
@@ -278,7 +241,6 @@ export default function ReviewModal({ records, onComplete, onClose, onOpenRules 
             </button>
           </div>
           <div className="flex items-center gap-3">
-            {/* 좌: 안 한 것 / 한 것 / 전체 필터 */}
             <div className="flex border border-gray-300 overflow-hidden shrink-0">
               {FILTERS.map(f => (
                 <button
@@ -292,11 +254,18 @@ export default function ReviewModal({ records, onComplete, onClose, onOpenRules 
                 </button>
               ))}
             </div>
-            {/* 우: 진행도 바 + 규칙 */}
-            <div className="flex-1 h-1.5 bg-gray-100">
-              <div className="h-full bg-gray-800 transition-all" style={{ width: `${pct}%` }} />
+            <div className="flex-1 flex items-center gap-1.5 tabular-nums">
+              {regretCount > 0 ? (
+                <>
+                  <span className="text-[11px] font-semibold text-red-500">{regretCount}건</span>
+                  <span className="text-gray-300 text-[10px]">·</span>
+                  <span className="text-[11px] font-semibold text-gray-700">{fmtShort(regretAmt)}</span>
+                  <span className="text-[10px] text-gray-400">후회 체크됨</span>
+                </>
+              ) : (
+                <span className="text-[10px] text-gray-300">후회 항목 없음</span>
+              )}
             </div>
-            <span className="text-[11px] font-semibold text-gray-700 tabular-nums shrink-0">{pct}%</span>
             <button
               onClick={onOpenRules}
               className="flex items-center gap-1 text-[10px] font-semibold text-gray-500 border border-gray-300 px-2 py-1 hover:bg-gray-50 shrink-0"
@@ -350,33 +319,18 @@ export default function ReviewModal({ records, onComplete, onClose, onOpenRules 
                 .filter(g => g.rows.length > 0)
               const cnt = groups.reduce((s, g) => s + g.rows.length, 0)
               const tot = groups.reduce((s, g) => s + g.total, 0)
-              const allIds = groups.flatMap(g => g.rows.map(r => r.id))
               return <>
                 <div className="flex items-baseline justify-between mb-2">
                   <h3 className="text-[11px] font-bold text-gray-800">
                     ② 소액 지출 <span className="text-gray-400 font-medium">({cnt}건 · {fmtShort(tot)})</span>
                   </h3>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <span className="text-[10px] text-gray-400">{fmt(settings.smallAmount)} 미만</span>
-                    {allIds.length > 0 && (
-                      <button
-                        onClick={() => setMany(allIds, 'good')}
-                        className="text-[10px] font-semibold text-gray-700 border border-green-600 bg-green-50 px-2 py-1 hover:bg-green-100"
-                      >
-                        전부 만족
-                      </button>
-                    )}
-                  </div>
+                  <span className="text-[10px] text-gray-400">{fmt(settings.smallAmount)} 미만</span>
                 </div>
                 <div className="border border-gray-300">
                   {groups.length === 0 ? (
                     <p className="px-3 py-3 text-[11px] text-gray-300">없음</p>
                   ) : groups.map(g => {
                     const open = openCats.has(g.cat)
-                    const ids = g.rows.map(r => r.id)
-                    // 카테고리 전체가 같은 값이면 그 값을, 섞여 있으면 null을 표시
-                    const first = reviewOf(g.rows[0])
-                    const groupValue = g.rows.every(r => reviewOf(r) === first) ? first : null
                     return (
                       <div key={g.cat} className="border-b border-gray-100 last:border-b-0">
                         <div className="flex items-center gap-2 px-3 py-1.5">
@@ -385,7 +339,6 @@ export default function ReviewModal({ records, onComplete, onClose, onOpenRules 
                             <span className="text-[11px] text-gray-800 truncate">{g.cat}</span>
                             <span className="text-[10px] text-gray-400 shrink-0">{g.rows.length}건 · {fmtShort(g.total)}</span>
                           </button>
-                          <RatingButtons value={groupValue} onPick={v => setMany(ids, v)} />
                         </div>
                         {open && (
                           <div className="bg-gray-50 border-t border-gray-100">
@@ -449,8 +402,8 @@ export default function ReviewModal({ records, onComplete, onClose, onOpenRules 
 
         {/* 하단 고정 */}
         <div className="flex items-center justify-between px-5 py-3 border-t border-gray-300 shrink-0">
-          <span className="text-[11px] text-gray-500">
-            {remaining > 0 ? `아직 ${remaining}건 남았어요` : '모두 점검했어요 🎉'}
+          <span className="text-[11px] text-gray-500 tabular-nums">
+            {regretCount > 0 ? `후회 ${regretCount}건 · ${fmtShort(regretAmt)}` : '후회 항목 없음'}
           </span>
           <div className="flex items-center gap-2">
             <button
@@ -460,7 +413,7 @@ export default function ReviewModal({ records, onComplete, onClose, onOpenRules 
               초기화
             </button>
             <button
-              onClick={handleComplete}
+              onClick={() => setConfirmComplete(true)}
               className="text-xs font-bold px-4 py-2 bg-gray-900 text-white hover:bg-gray-700 transition-colors"
             >
               점검 완료
@@ -494,6 +447,75 @@ export default function ReviewModal({ records, onComplete, onClose, onOpenRules 
           </div>
         </div>
       )}
+
+      {/* 점검 완료 확인 알림창 */}
+      {confirmComplete && (() => {
+        const regretItems = reviewTargets.filter(r => reviewOf(r) === 'bad')
+        const bigRegret = regretItems.filter(r => r.amount >= settings.smallAmount).length
+        const catMap = new Map<string, { count: number; amount: number }>()
+        for (const r of regretItems) {
+          const k = r.category || '기타'
+          const c = catMap.get(k) ?? { count: 0, amount: 0 }
+          c.count++; c.amount += r.amount; catMap.set(k, c)
+        }
+        const catList = Array.from(catMap.entries())
+          .map(([cat, v]) => ({ cat, ...v }))
+          .sort((a, b) => b.amount - a.amount)
+          .slice(0, 3)
+        return (
+          <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/20">
+            <div className="bg-white w-[280px] border border-gray-300 shadow-xl flex flex-col">
+              <div className="px-5 py-4 flex flex-col gap-3">
+                <p className="text-[13px] font-bold text-gray-800">점검을 완료할까요?</p>
+                {/* 요약 수치 */}
+                <div className="flex flex-col gap-1 text-[11px] tabular-nums">
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">전체 지출</span>
+                    <span className="text-gray-700 font-semibold">{reviewTargets.length}건</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-gray-400">후회</span>
+                    <span className="text-red-500 font-semibold">
+                      {regretCount > 0 ? `${regretCount}건 · ${fmtShort(regretAmt)}` : '없음'}
+                    </span>
+                  </div>
+                  {bigRegret > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-gray-400">고액 후회</span>
+                      <span className="text-gray-700 font-semibold">{bigRegret}건</span>
+                    </div>
+                  )}
+                </div>
+                {/* 카테고리별 후회 */}
+                {catList.length > 0 && (
+                  <div className="border-t border-gray-100 pt-2 flex flex-col gap-1">
+                    {catList.map(c => (
+                      <div key={c.cat} className="flex justify-between text-[11px] tabular-nums">
+                        <span className="text-gray-600 truncate mr-2">{c.cat}</span>
+                        <span className="shrink-0 text-gray-500">{c.count}건 · {fmtShort(c.amount)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="flex justify-end gap-2 px-4 py-3 border-t border-gray-200">
+                <button
+                  onClick={() => setConfirmComplete(false)}
+                  className="text-xs font-semibold text-gray-500 border border-gray-300 px-3 py-1.5 hover:bg-gray-50 transition-colors"
+                >
+                  취소
+                </button>
+                <button
+                  onClick={() => { setConfirmComplete(false); handleComplete() }}
+                  className="text-xs font-bold text-white bg-gray-900 px-3 py-1.5 hover:bg-gray-700 transition-colors"
+                >
+                  완료
+                </button>
+              </div>
+            </div>
+          </div>
+        )
+      })()}
     </div>
   )
 }

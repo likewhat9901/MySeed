@@ -39,15 +39,15 @@ export default function CustomMappingModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30">
-      <div className="bg-white rounded-2xl shadow-xl flex flex-col" style={{ width: '80vw', height: '80vh' }}>
+      <div className="bg-white border border-gray-300 shadow-xl flex flex-col" style={{ width: '80vw', height: '80vh' }}>
         {/* 헤더 */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-gray-300 shrink-0">
           <div>
-            <h2 className="text-sm font-semibold text-gray-800">컬럼 매핑</h2>
+            <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-gray-600">컬럼 매핑</p>
             <p className="text-[11px] text-gray-400 mt-0.5">엑셀에서 범위를 드래그해 내역 필드와 연결하세요.</p>
           </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
-            <X size={16} />
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
+            <X size={15} />
           </button>
         </div>
 
@@ -64,7 +64,7 @@ export default function CustomMappingModal({
         </div>
 
         {/* 푸터 — 매핑 현황 + 확인 버튼 */}
-        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-200 shrink-0 bg-gray-50">
+        <div className="flex items-center justify-between px-5 py-3 border-t border-gray-300 shrink-0 bg-gray-50">
           <div className="flex items-center gap-1.5 flex-wrap flex-1 min-w-0">
             {mappings.length === 0 ? (
               <span className="text-[11px] text-gray-300">아직 매핑된 컬럼이 없습니다.</span>
@@ -72,14 +72,14 @@ export default function CustomMappingModal({
               mappings.map(m => (
                 <span
                   key={m.column}
-                  className="flex items-center gap-1 text-[11px] border border-brand/30 bg-brand/5 text-brand rounded-full px-2 py-0.5"
+                  className="flex items-center gap-1 text-[11px] border border-gray-300 bg-white text-gray-700 px-2 py-0.5"
                 >
-                  <span className="font-medium">{m.column}</span>
-                  <span className="opacity-50">→</span>
-                  <span className="font-mono">{m.address}</span>
+                  <span className="font-semibold">{m.column}</span>
+                  <span className="text-gray-300">→</span>
+                  <span className="font-mono text-gray-500">{m.address}</span>
                   <button
                     onClick={() => setMappings(prev => prev.filter(p => p.column !== m.column))}
-                    className="opacity-50 hover:opacity-100 ml-0.5"
+                    className="text-gray-300 hover:text-red-400 ml-0.5"
                   >
                     <X size={10} />
                   </button>
@@ -90,16 +90,16 @@ export default function CustomMappingModal({
           <div className="flex gap-2 ml-4 shrink-0">
             <button
               onClick={onClose}
-              className="text-xs text-gray-400 hover:text-gray-600 px-3 py-1.5"
+              className="text-xs font-semibold text-gray-500 border border-gray-300 px-3 py-1.5 hover:bg-gray-50 transition-colors"
             >
               취소
             </button>
             <button
-              onClick={() => { console.log('[CustomMappingModal] confirm clicked, mappings:', mappings); if (mappings.length > 0) onConfirm(mappings) }}
+              onClick={() => { if (mappings.length > 0) onConfirm(mappings) }}
               disabled={mappings.length === 0}
-              className={`text-xs font-medium px-4 py-1.5 rounded-lg transition-colors ${
+              className={`text-xs font-bold px-4 py-1.5 transition-colors ${
                 mappings.length > 0
-                  ? 'bg-brand text-white hover:bg-brand-dark'
+                  ? 'bg-gray-800 text-white hover:bg-gray-700'
                   : 'bg-gray-100 text-gray-300 cursor-not-allowed'
               }`}
             >

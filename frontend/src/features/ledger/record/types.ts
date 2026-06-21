@@ -1,7 +1,7 @@
 // 내역(record) 데이터 타입 — 내역 탭 테이블 및 현황 카드 집계 기준
 import type { TransactionType } from '@/constants/categories'
 
-export type ReviewRating = 'good' | 'soso' | 'bad' | null
+export type ReviewRating = 'bad' | null
 export type Currency = 'KRW' | 'USD' | 'EUR' | 'JPY' | 'CNY'
 
 export interface LedgerRecord {
@@ -20,7 +20,7 @@ export interface LedgerRecord {
   isFixed:        boolean       // 월세·구독 등 고정 지출 여부
 }
 
-export type RecordColumn = 'date' | 'time' | 'type' | 'category' | 'subcategory' | 'description' | 'amount' | 'currency' | 'paymentMethod' | 'memo'
+export type RecordColumn = 'date' | 'time' | 'type' | 'category' | 'subcategory' | 'description' | 'amount' | 'currency' | 'paymentMethod' | 'memo' | 'review'
 
 export const RECORD_COLUMN_LABELS: Record<RecordColumn, string> = {
   date:          '날짜',
@@ -33,6 +33,7 @@ export const RECORD_COLUMN_LABELS: Record<RecordColumn, string> = {
   currency:      '화폐',
   paymentMethod: '결제수단',
   memo:          '메모',
+  review:        '후회',
 }
 
 export interface ColumnMappingEntry {

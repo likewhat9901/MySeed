@@ -32,9 +32,9 @@ export default function LedgerCard({ ledger, index, onRename, onDelete, onCoverC
   } = useLedgerItemMenu({ ledger, onRename, onCoverChange })
 
   return (
-    <div className="bg-white border border-seed-muted rounded-2xl hover:shadow-[0_4px_20px_-4px_rgba(45,140,78,0.15)] transition-shadow">
+    <div className="bg-white border border-gray-300 hover:border-gray-800 transition-colors">
       {/* 썸네일 */}
-      <Link href={`/ledger?led=${ledger.led_id}`} className="block overflow-hidden rounded-t-2xl relative">
+      <Link href={`/ledger?led=${ledger.led_id}`} className="block overflow-hidden relative">
         {ledger.cover_url ? (
           <img
             src={ledger.cover_url}
@@ -46,7 +46,7 @@ export default function LedgerCard({ ledger, index, onRename, onDelete, onCoverC
         )}
         {uploading && (
           <div className="absolute inset-0 bg-white/60 flex items-center justify-center">
-            <div className="w-5 h-5 border-2 border-brand border-t-transparent rounded-full animate-spin" />
+            <div className="w-5 h-5 border-2 border-gray-800 border-t-transparent rounded-full animate-spin" />
           </div>
         )}
       </Link>
@@ -63,7 +63,7 @@ export default function LedgerCard({ ledger, index, onRename, onDelete, onCoverC
                 if (e.key === 'Escape') { setNameInput(ledger.led_name); setRenaming(false) }
               }}
               onBlur={submitRename}
-              className="flex-1 text-xs font-semibold text-gray-800 border-b border-brand outline-none bg-transparent leading-snug"
+              className="flex-1 text-xs font-semibold text-gray-800 border-b border-gray-800 outline-none bg-transparent leading-snug"
             />
           ) : (
             <Link href={`/ledger?led=${ledger.led_id}`} className="flex-1 text-xs font-semibold text-gray-800 leading-snug hover:underline truncate">
@@ -82,7 +82,7 @@ export default function LedgerCard({ ledger, index, onRename, onDelete, onCoverC
             </button>
 
             {menuOpen && (
-              <div className="absolute right-0 top-5 z-20 w-36 bg-white border border-gray-200 rounded-xl shadow-lg py-1 text-sm">
+              <div className="absolute right-0 top-5 z-20 w-36 bg-white border border-gray-300 shadow-md py-1 text-sm">
                 <button
                   type="button"
                   onClick={() => { setMenuOpen(false); setRenaming(true) }}

@@ -1,8 +1,9 @@
 // 점검 규칙 모달 — 점검 모달 ①②③ 순서에 맞춰 규칙 통합 설정
 'use client'
 
-import { X } from 'lucide-react'
-import { useReviewSettings } from '@/features/ledger/record/reviewSettings'
+import { useState } from 'react'
+import { RotateCcw, Settings, X } from 'lucide-react'
+import { useReviewSettings, DEFAULT_SETTINGS } from '@/features/ledger/record/reviewSettings'
 import { CATEGORIES } from '@/constants/categories'
 
 interface Props {
@@ -13,6 +14,17 @@ const CATS = CATEGORIES.filter(c => c !== '수입')
 
 export default function RulesModal({ onClose }: Props) {
   const { settings, update } = useReviewSettings()
+  const [smallAmountSettingsOpen, setSmallAmountSettingsOpen] = useState(false)
+  const [draftDefault, setDraftDefault] = useState(() => String(settings.smallAmountDefault))
+
+  function resetAll() {
+    update({ ...DEFAULT_SETTINGS, smallAmount: settings.smallAmountDefault })
+  }
+
+  function saveSmallAmountDefault() {
+    const n = Math.max(0, Number(draftDefault) || 0)
+    update({ smallAmountDefault: n })
+  }
 
   type ListField = 'alwaysReview' | 'exclude' | 'fixedCategories' | 'smallDefaults'
 
@@ -90,25 +102,50 @@ export default function RulesModal({ onClose }: Props) {
     )
   }
 
+  function CardResetButton({ onClick }: { onClick: () => void }) {
+    return (
+      <button
+        onClick={onClick}
+        title="이 카드만 기본값으로 초기화"
+        className="ml-auto flex items-center gap-1 text-[10px] text-gray-300 hover:text-gray-600 transition-colors"
+      >
+        <RotateCcw size={10} />
+        초기화
+      </button>
+    )
+  }
+
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/30 p-4">
-      <div className="bg-white w-[480px] border border-gray-300 shadow-xl flex flex-col">
+      <div className="bg-white w-[480px] max-h-[70vh] border border-gray-300 shadow-xl flex flex-col">
 
         {/* 헤더 */}
         <div className="flex items-center justify-between px-5 py-3 border-b border-gray-300">
           <p className="text-[10px] font-bold tracking-[0.18em] uppercase text-gray-600">점검 규칙</p>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X size={15} /></button>
+          <div className="flex items-center gap-3">
+            <button
+              onClick={resetAll}
+              className="flex items-center gap-1 text-[10px] font-semibold text-gray-400 hover:text-red-500 transition-colors"
+            >
+              <RotateCcw size={11} />
+              전체 초기화
+            </button>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X size={15} /></button>
+          </div>
         </div>
 
         {/* 본문 */}
-        <div className="px-5 py-4 space-y-4 overflow-y-auto">
+        <div className="flex-1 px-5 py-4 space-y-4 overflow-y-auto">
 
           {/* ① 리뷰 필요 */}
           <div>
             <p className="text-[10px] font-bold text-gray-700 mb-2">① 리뷰 필요</p>
             {/* 항상 리뷰 — 검정 테두리 */}
             <div className="border border-gray-800 px-4 py-3">
-              <p className="text-[10px] text-gray-500 font-semibold mb-1">항상 리뷰</p>
+              <div className="flex items-center mb-1">
+                <p className="text-[10px] text-gray-500 font-semibold">항상 리뷰</p>
+                <CardResetButton onClick={() => update({ alwaysReview: DEFAULT_SETTINGS.alwaysReview })} />
+              </div>
               <p className="text-[10px] text-gray-400 mb-2">소액이어도 ①로 올릴 카테고리</p>
               <div className="flex flex-wrap gap-1.5">
                 {CATS.map(c => <CatToggle key={c} field="alwaysReview" cat={c} />)}
@@ -122,7 +159,20 @@ export default function RulesModal({ onClose }: Props) {
             <div className="space-y-2">
               {/* 소액 기준 — 색 없음 (카테고리 규칙 아님) */}
               <div className="border border-gray-300 px-4 py-3">
-                <p className="text-[10px] text-gray-500 font-semibold mb-2">소액 기준</p>
+                <div className="flex items-center gap-2 mb-2">
+                  <p className="text-[10px] text-gray-500 font-semibold">소액 기준</p>
+                  <button
+                    onClick={() => {
+                      setDraftDefault(String(settings.smallAmountDefault))
+                      setSmallAmountSettingsOpen(o => !o)
+                    }}
+                    title="기본값 설정"
+                    className={`text-gray-300 hover:text-gray-600 transition-colors ${smallAmountSettingsOpen ? 'text-gray-600' : ''}`}
+                  >
+                    <Settings size={11} />
+                  </button>
+                  <CardResetButton onClick={() => update({ smallAmount: settings.smallAmountDefault })} />
+                </div>
                 <div className="flex items-center gap-2">
                   <div className="flex items-center border border-gray-300">
                     <span className="px-2.5 text-[10px] text-gray-400 bg-gray-50 border-r border-gray-200 py-1.5">₩</span>
@@ -135,10 +185,33 @@ export default function RulesModal({ onClose }: Props) {
                   </div>
                   <span className="text-[10px] text-gray-400">미만은 ②로 묶음</span>
                 </div>
+                {smallAmountSettingsOpen && (
+                  <div className="flex items-center gap-2 mt-2.5 pt-2.5 border-t border-gray-100">
+                    <span className="text-[10px] text-gray-400 shrink-0">초기화 시 기본값</span>
+                    <div className="flex items-center border border-gray-300">
+                      <span className="px-2.5 text-[10px] text-gray-400 bg-gray-50 border-r border-gray-200 py-1.5">₩</span>
+                      <input
+                        type="number"
+                        value={draftDefault}
+                        onChange={e => setDraftDefault(e.target.value)}
+                        className="w-28 px-2.5 py-1.5 text-[11px] text-gray-800 outline-none tabular-nums"
+                      />
+                    </div>
+                    <button
+                      onClick={saveSmallAmountDefault}
+                      className="text-[10px] font-semibold px-2.5 py-1.5 bg-gray-800 text-white hover:bg-gray-700 transition-colors"
+                    >
+                      저장
+                    </button>
+                  </div>
+                )}
               </div>
               {/* 자동 만족 — 초록 테두리 */}
               <div className="border border-green-500 px-4 py-3">
-                <p className="text-[10px] text-gray-500 font-semibold mb-1">자동 만족</p>
+                <div className="flex items-center mb-1">
+                  <p className="text-[10px] text-gray-500 font-semibold">자동 만족</p>
+                  <CardResetButton onClick={() => update({ smallDefaults: DEFAULT_SETTINGS.smallDefaults })} />
+                </div>
                 <p className="text-[10px] text-gray-400 mb-2">소액 중 만족으로 자동 처리할 카테고리</p>
                 <div className="flex flex-wrap gap-1.5">
                   {CATS.map(c => <CatToggle key={c} field="smallDefaults" cat={c} />)}
@@ -156,6 +229,7 @@ export default function RulesModal({ onClose }: Props) {
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px]">🔒</span>
                   <p className="text-[10px] text-gray-500 font-semibold">고정 지출</p>
+                  <CardResetButton onClick={() => update({ fixedCategories: DEFAULT_SETTINGS.fixedCategories })} />
                 </div>
                 <p className="text-[10px] text-gray-400">매달 반복되는 고정비 — ③ 고정 지출로 자동 분류</p>
                 <div className="flex flex-wrap gap-1.5">
@@ -167,6 +241,7 @@ export default function RulesModal({ onClose }: Props) {
                 <div className="flex items-center gap-1.5">
                   <span className="text-[11px]">⊘</span>
                   <p className="text-[10px] text-gray-500 font-semibold">리뷰 제외</p>
+                  <CardResetButton onClick={() => update({ exclude: DEFAULT_SETTINGS.exclude })} />
                 </div>
                 <p className="text-[10px] text-gray-400">리뷰하지 않기로 한 카테고리 — ③ 리뷰 제외로 자동 분류</p>
                 <div className="flex flex-wrap gap-1.5">

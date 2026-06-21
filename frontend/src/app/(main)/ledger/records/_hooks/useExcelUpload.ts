@@ -53,6 +53,10 @@ export function applyMappings(
       const raw = String(colData.type[i] ?? '')
       patch.type = raw.includes('입') ? '수입' : '지출'
     }
+    if (colData.review) {
+      const raw = String(colData.review[i] ?? '').trim()
+      patch.review = raw ? 'bad' : null
+    }
 
     if (existing) return { ...existing, ...patch }
     return {
