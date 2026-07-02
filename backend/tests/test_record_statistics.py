@@ -86,3 +86,21 @@ def test_compute_multi_categories_or_union() -> None:
     assert stats["count_records_seen"] == 2
     assert stats["count_amount_rows"] == 2
 
+
+def test_compute_with_period_filter() -> None:
+    from datetime import date
+
+    rows = [
+        {"cate_id": None, "data": {"date": "2025-01-15", "amount": 100, "category": "식비"}},
+        {"cate_id": None, "data": {"date": "2025-06-15", "amount": 200, "category": "식비"}},
+    ]
+    stats = compute_led_statistics(
+        rows,
+        categories=["식비"],
+        method="sum",
+        period_start=date(2025, 1, 1),
+        period_end=date(2025, 3, 31),
+    )
+    assert stats["value"] == 100.0
+    assert stats["count_records_seen"] == 1
+

@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import unicodedata
+from datetime import date
 from typing import Any, Iterable, Literal, Sequence
 from uuid import UUID
 
 from app.services.excel_record_import import coerce_numeric_amount
+from app.services.record_period import record_in_date_range
 
 StatMethod = Literal["sum", "avg"]
 
@@ -131,6 +133,16 @@ def filter_matching_records(
     ]
 
 
+def filter_records_by_period(
+    records: list[dict[str, Any]],
+    period_start: date | None,
+    period_end: date | None,
+) -> list[dict[str, Any]]:
+    if period_start is None or period_end is None:
+        return list(records)
+    return [r for r in records if record_in_date_range(r, period_start, period_end)]
+
+
 def aggregate_amounts_for_records(
     records: list[dict[str, Any]],
     method: StatMethod,
@@ -159,8 +171,11 @@ def compute_led_statistics(
     *,
     categories: Sequence[str] | None = None,
     method: StatMethod,
+    period_start: date | None = None,
+    period_end: date | None = None,
 ) -> dict[str, Any]:
     matched = filter_matching_records(records, categories)
+    matched = filter_records_by_period(matched, period_start, period_end)
     val, amt_count = aggregate_amounts_for_records(matched, method)
     return {
         "count_amount_rows": amt_count,

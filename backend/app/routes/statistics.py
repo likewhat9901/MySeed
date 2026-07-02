@@ -31,6 +31,38 @@ def _trimmed_category_queries(categories: list[str]) -> list[str]:
     return [str(x).strip() for x in categories if str(x).strip()]
 
 
+def _resolve_statistics_period(
+    period: str | None,
+    year: int | None,
+    month: int | None,
+    half: int | None,
+    quarter: int | None,
+    week: int | None,
+) -> ResolvedPeriod | None:
+    if period is None or not str(period).strip():
+        if any(x is not None for x in (year, month, half, quarter, week)):
+            raise HTTPException(status_code=400, detail="year·month 등 기간 파라미터는 period와 함께 보내야 합니다")
+        return None
+    if year is None:
+        raise HTTPException(status_code=400, detail="period 사용 시 year가 필요합니다")
+    if parse_period_kind(period) is None:
+        raise HTTPException(
+            status_code=400,
+            detail='period는 year|half|quarter|month|week (연·반기·분기·월·주) 중 하나여야 합니다',
+        )
+    try:
+        return resolve_period_range(
+            period=period,
+            year=year,
+            month=month,
+            half=half,
+            quarter=quarter,
+            week=week,
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e)) from e
+
+
 class TopReductionCategoryItem(BaseModel):
     rank: int = Field(description="우선순위 (1=가장 줄여야 할 카테고리)")
     category: str = Field(description="대분류/카테고리명")
@@ -59,6 +91,12 @@ class TopReductionCategoriesResponse(BaseModel):
 
 class LedgerStatisticsResponse(BaseModel):
     led_id: UUID
+    period: str | None = Field(
+        default=None,
+        description="적용 기간 종류(year|half|quarter|month|week). 미지정 시 전체",
+    )
+    period_start: str | None = Field(default=None, description="집계 시작일(YYYY-MM-DD)")
+    period_end: str | None = Field(default=None, description="집계 종료일(YYYY-MM-DD)")
     categories: list[str] = Field(
         default_factory=list,
         description=(
@@ -87,7 +125,11 @@ class LedgerStatisticsResponse(BaseModel):
         "**`category` 같은 키를 여러 번 보내면**(예: `?category=식비&category=교통`) "
         "그 중 하나에라도 해당하는 레코드를 **합쳐서** 합·평균합니다(OR). "
         "값이 UUID 문자열이면 `cate_id`, 그 외는 `data.category`와 정규화 비교입니다. "
-        "`method`: `sum`/`합`/… 또는 `avg`/`평균`. 각 행 `data.amount`만 집계합니다."
+        "`method`: `sum`/`합`/… 또는 `avg`/`평균`. 각 행 `data.amount`만 집계합니다. "
+        "**기간 필터**: `period` + `year` 및 종류별 파라미터 — "
+        "`year`(연), `half`+`half`(1=상반기·2=하반기), `quarter`+`quarter`(1~4), "
+        "`month`+`month`(1~12), `week`+`week`(ISO 주차 1~53). "
+        "`period` 생략 시 가계부 전체 기간."
     ),
     response_model=LedgerStatisticsResponse,
 )
@@ -102,6 +144,16 @@ async def get_ledger_statistics(
         default_factory=list,
         description="같은 키를 반복 가능. 여러 값 중 하나라도 맞으면 포함해 합·평균합니다.",
     ),
+    period: str | None = Query(
+        None,
+        description="기간: year|half|quarter|month|week (또는 연·반기·분기·월·주)",
+        examples=["month", "quarter"],
+    ),
+    year: int | None = Query(None, ge=1970, le=2100, description="기준 연도"),
+    month: int | None = Query(None, ge=1, le=12, description="period=month 일 때 월(1~12)"),
+    half: int | None = Query(None, ge=1, le=2, description="period=half 일 때 1=상반기, 2=하반기"),
+    quarter: int | None = Query(None, ge=1, le=4, description="period=quarter 일 때 1~4"),
+    week: int | None = Query(None, ge=1, le=53, description="period=week 일 때 ISO 주차"),
     authorization: Annotated[
         str | None,
         Header(description="Bearer 생략 가능(led_id로 소유자 토큰 자동 발급)"),
@@ -119,14 +171,23 @@ async def get_ledger_statistics(
         )
 
     applied = _trimmed_category_queries(category)
+    resolved = _resolve_statistics_period(period, year, month, half, quarter, week)
 
     try:
         require_ledger_actor(led_id, authorization)
         rows = fetch_tb_record_rows_for_ledger(led_id)
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"tb_record 조회 실패: {e!s}") from e
 
-    stats: dict[str, Any] = compute_led_statistics(rows, categories=category, method=m)
+    stats: dict[str, Any] = compute_led_statistics(
+        rows,
+        categories=category,
+        method=m,
+        period_start=resolved.start if resolved else None,
+        period_end=resolved.end if resolved else None,
+    )
 
     val = stats["value"]
     if val is None:
@@ -138,6 +199,9 @@ async def get_ledger_statistics(
 
     return LedgerStatisticsResponse(
         led_id=led_id,
+        period=resolved.kind if resolved else None,
+        period_start=resolved.start.isoformat() if resolved else None,
+        period_end=resolved.end.isoformat() if resolved else None,
         categories=applied,
         method=m,
         matched_record_count=stats["count_records_seen"],
