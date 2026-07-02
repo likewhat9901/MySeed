@@ -10,7 +10,7 @@ from uuid import UUID
 
 from app.services.bs_reduction_import import SKIP_INDEX_CATEGORY, category_for_index
 from app.services.llm_category_classification import MerchantClassification, classify_merchants_with_llm
-from app.services.supabase_data import save_learned_merchant_category
+from app.services.supabase_data import save_learned_merchant_categories_bulk
 
 logger = logging.getLogger(__name__)
 
@@ -118,22 +118,30 @@ def _persist_llm_classifications(
     *,
     dict_entries: list[dict[str, Any]],
 ) -> int:
-    """LLM 분류 결과를 전역 사전에 저장하고, 메모리 내 dict_entries에도 반영."""
-    learned = 0
-    for cls in llm_results.values():
-        kw = cls.keyword.strip()
-        cat = cls.category.strip()
-        if not kw or not cat:
-            continue
-        try:
-            if save_learned_merchant_category(keyword=kw, category=cat):
-                learned += 1
+    """LLM 분류 결과를 전역 사전에 일괄 저장."""
+    pairs = [
+        (cls.keyword.strip() or merchant, cls.category.strip())
+        for merchant, cls in llm_results.items()
+        if cls.category.strip()
+    ]
+    if not pairs:
+        return 0
+    try:
+        learned = save_learned_merchant_categories_bulk(pairs)
+        existing_keys = {
+            str(e.get("keyword", "")).strip().lower() for e in dict_entries
+        }
+        for kw, cat in pairs:
+            key = kw.lower()
+            if key not in existing_keys:
                 dict_entries.append(
                     {"dict_id": None, "mem_id": None, "keyword": kw, "category": cat}
                 )
-        except Exception as e:
-            logger.warning("사전 자동 학습 저장 실패 keyword=%r: %s", kw, e)
-    return learned
+                existing_keys.add(key)
+        return learned
+    except Exception as e:
+        logger.warning("사전 일괄 학습 저장 실패: %s", e)
+        return 0
 
 
 async def resolve_category_for_merchant(

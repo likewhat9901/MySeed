@@ -53,7 +53,10 @@ def test_member_dict_over_global() -> None:
 def test_enrich_rows_dictionary_and_llm(monkeypatch) -> None:
     saved: list[tuple[str, str]] = []
 
+    llm_calls: list[list[str]] = []
+
     async def fake_llm(merchants, **kwargs):
+        llm_calls.append(list(merchants))
         return (
             {
                 m: MerchantClassification(category="LLM카테", keyword="알수없는")
@@ -62,12 +65,12 @@ def test_enrich_rows_dictionary_and_llm(monkeypatch) -> None:
             [],
         )
 
-    def fake_save(*, keyword: str, category: str) -> bool:
-        saved.append((keyword, category))
-        return True
+    def fake_save_bulk(pairs: list[tuple[str, str]]) -> int:
+        saved.extend(pairs)
+        return len(pairs)
 
     monkeypatch.setattr(cr, "classify_merchants_with_llm", fake_llm)
-    monkeypatch.setattr(cr, "save_learned_merchant_category", fake_save)
+    monkeypatch.setattr(cr, "save_learned_merchant_categories_bulk", fake_save_bulk)
 
     rows = [
         {
@@ -102,6 +105,8 @@ def test_enrich_rows_dictionary_and_llm(monkeypatch) -> None:
     assert stats.from_llm == 1
     assert stats.dict_learned == 1
     assert saved == [("알수없는", "LLM카테")]
+    assert len(llm_calls) == 1
+    assert llm_calls[0] == ["알수없는가게"]
 
 
 def test_llm_fail_uses_heuristic_fallback(monkeypatch) -> None:

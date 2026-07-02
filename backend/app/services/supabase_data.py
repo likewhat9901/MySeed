@@ -410,6 +410,43 @@ def merchant_dict_keyword_taken(keyword: str, *, mem_id: UUID | None = None) -> 
     return any(str(r.get("keyword", "")).strip().lower() == norm for r in rows)
 
 
+def save_learned_merchant_categories_bulk(
+    pairs: list[tuple[str, str]],
+) -> int:
+    """LLM 분류 결과를 전역 사전에 일괄 저장. 반환: 새로 insert된 건수."""
+    rows: list[dict[str, str]] = []
+    seen: set[str] = set()
+    for keyword, category in pairs:
+        kw = keyword.strip()
+        cat = category.strip()
+        if not kw or not cat:
+            continue
+        key = kw.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append({"keyword": kw, "category": cat})
+    if not rows:
+        return 0
+
+    existing = {
+        str(r.get("keyword", "")).strip().lower()
+        for r in fetch_merchant_category_dict(mem_id=None)
+    }
+    to_insert = [r for r in rows if r["keyword"].lower() not in existing]
+    if not to_insert:
+        return 0
+
+    try:
+        _client().table("tb_merchant_category_dict").insert(to_insert).execute()
+        return len(to_insert)
+    except Exception as e:
+        msg = str(e).lower()
+        if "duplicate" in msg or "23505" in msg or "unique" in msg:
+            return 0
+        raise
+
+
 def save_learned_merchant_category(*, keyword: str, category: str) -> bool:
     """
     LLM 분류 결과를 전역 사전(mem_id=NULL)에 저장.

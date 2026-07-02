@@ -12,7 +12,8 @@ from app.core.config import Settings, get_settings
 
 GEMINI_OPENAI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
-GEMINI_BATCH_SIZE = 12
+# 미분류 상호명은 한 요청에 모아서 전송 (초과 시에만 분할)
+LLM_MERCHANT_BATCH_SIZE = 200
 
 
 @dataclass(frozen=True)
