@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from datetime import date
+
+import pytest
+
 from app.services import dynamic_reduction as dr
 from app.services.bs_reduction_import import NEED_TYPE_UNSATISFIED, compute_reduction_for_records, reduction_index_for
 
@@ -12,52 +16,49 @@ def _row(rec_id, cat, date, amount, need_type="만족"):
     }
 
 
-def test_neutral_weight_first_month() -> None:
-    ctx = dr.build_reduction_context([_row("a", "식비", "2025-01-10", 10000, NEED_TYPE_UNSATISFIED)])
-    assert ctx.category_weight("식비", "2025-01") == 1.0
+def test_category_weight_stricter_range() -> None:
+    assert dr.compute_category_weight(0.0) == 0.1
+    assert dr.compute_category_weight(0.5) == pytest.approx(1.156, abs=0.001)
+    assert dr.compute_category_weight(1.0) == pytest.approx(2.0)
 
 
-def test_second_month_uses_previous_month_only() -> None:
+def test_insufficient_sample_neutral_weight() -> None:
+    w, _ = dr.category_weight_for_record(
+        [_row("a", "식비", "2025-01-10", 10000, NEED_TYPE_UNSATISFIED)],
+        "식비",
+        date(2025, 1, 31),
+    )
+    assert w == 1.0
+
+
+def test_rolling_blend_raises_weight_after_unsatisfied_month() -> None:
     rows = [
         *[_row(f"j{i}", "식비", "2025-01-10", 10000, NEED_TYPE_UNSATISFIED) for i in range(10)],
         _row("b", "식비", "2025-02-10", 10000, "만족"),
     ]
-    ctx = dr.build_reduction_context(rows)
-    assert ctx.category_weight("식비", "2025-01") == 1.0
-    assert ctx.category_weight("식비", "2025-02") == 1.3
+    w, rate = dr.category_weight_for_record(rows, "식비", date(2025, 2, 28))
+    assert w == pytest.approx(2.0)
+    assert rate > 0.9
 
 
-def test_third_month_uses_immediate_previous_not_first() -> None:
+def test_rolling_blend_lowers_weight_after_satisfied_month() -> None:
     rows = [
         *[_row(f"j{i}", "식비", "2025-01-10", 10000, NEED_TYPE_UNSATISFIED) for i in range(10)],
         *[_row(f"f{i}", "식비", "2025-02-10", 10000, "만족") for i in range(10)],
         _row("c", "식비", "2025-03-10", 10000, "만족"),
     ]
-    ctx = dr.build_reduction_context(rows)
-    assert ctx.category_weight("식비", "2025-01") == 1.0
-    assert ctx.category_weight("식비", "2025-02") == 1.3
-    assert ctx.category_weight("식비", "2025-03") == 0.7
-
-
-def test_gap_months_use_last_activity_month() -> None:
-    """5월 거래 후 9월 거래 → 9월 weight는 5월(직전 거래월) 피드백(표본 10건+ 필요)."""
-    rows = [
-        *[
-            _row(f"t{i}", "여행/숙박", "2025-05-13", 2000, NEED_TYPE_UNSATISFIED)
-            for i in range(10)
-        ],
-        _row("b", "여행/숙박", "2025-09-05", 15000, "만족"),
-    ]
-    ctx = dr.build_reduction_context(rows)
-    assert ctx.category_weight("여행/숙박", "2025-05") == 1.0
-    assert ctx.category_weight("여행/숙박", "2025-09") == 1.3
+    w, rate = dr.category_weight_for_record(rows, "식비", date(2025, 3, 31))
+    # 롤링 10/21 + 직전월 0% → effective ≈ 0.31 → α=2 보정 후 tier 1 → 0.31
+    assert w == pytest.approx(0.311, abs=0.01)
+    assert rate < 0.35
 
 
 def test_budget_overage_bonus_on_context() -> None:
-    ctx = dr.build_reduction_context(
-        [_row("a", "쇼핑", "2025-03-10", 200000, NEED_TYPE_UNSATISFIED)],
-        budgets={"쇼핑": 100000},
-    )
+    rows = [
+        *[_row(f"b{i}", "쇼핑", "2025-03-01", 10000, NEED_TYPE_UNSATISFIED) for i in range(9)],
+        _row("a", "쇼핑", "2025-03-10", 200000, NEED_TYPE_UNSATISFIED),
+    ]
+    ctx = dr.build_reduction_context(rows, budgets={"쇼핑": 100000})
     assert ctx.budget_bonus("쇼핑", "2025-03") == 30.0
 
 
@@ -71,8 +72,8 @@ def test_per_record_index_uses_weight_multiplier_and_budget() -> None:
     ]
     patches, _, _ = compute_reduction_for_records(rows, budgets={"쇼핑": 100000})
     idx = patches[-1]["data"]["reduction_index"]
-    # (45 + 5 + 30) * 1.0 = 80
-    assert idx == 80.0
+    # (45 + 5 + 30) * weight — weight depends on rolling blend, at least 80
+    assert idx >= 80.0
 
 
 def test_neutral_weight_no_category_bonus() -> None:

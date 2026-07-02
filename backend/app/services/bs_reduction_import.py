@@ -10,8 +10,10 @@ from typing import Any
 
 from app.services.dynamic_reduction import (
     ReductionContext,
+    DEFAULT_ALPHA,
     build_reduction_context,
     category_meets_index_sample,
+    category_weight_for_record,
     month_key_from_data,
 )
 from app.services.excel_record_import import coerce_numeric_amount
@@ -257,13 +259,13 @@ def compute_reduction_for_records(
     rows: list[dict[str, Any]],
     *,
     budgets: dict[str, float] | None = None,
-    alpha: float = 1.0,
+    alpha: float = DEFAULT_ALPHA,
     budget_max_points: float = 30.0,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str]]:
     """
     DB tb_record 행에 대해 `need_type`, `reduction_index` 갱신 패치 반환.
 
-    카테고리 가중치: 카테고리×월 **불만족 비율** (모든 카테고리 동일 공식, 중립=1.0).
+    카테고리 가중치: 거래일 기준 6개월 롤링+전월 블렌드 → 10구간 (0.1~2.0).
     버짓 초과: 해당 카테고리·월 거래에 보너스 점수 가산.
     """
     warnings: list[str] = []
@@ -314,7 +316,7 @@ def compute_reduction_for_records(
             warnings.append(f"{rec_id}: need_type 미기록 -> 기본값(만족) 적용")
 
         month = month_key_from_data(data)
-        cat_weight = ctx.category_weight(category, month)
+        cat_weight, _ = category_weight_for_record(rows, category, record_date, alpha=alpha)
         bud_bonus = ctx.budget_bonus(category, month)
 
         idx = reduction_index_for(

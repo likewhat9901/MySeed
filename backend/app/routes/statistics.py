@@ -431,7 +431,7 @@ class DynamicReductionBody(BaseModel):
         DEFAULT_ALPHA,
         ge=0.0,
         le=5.0,
-        description="불만족 비율 → 카테고리 가중치 민감도 (기본 1.0, 중립=1.0)",
+        description="불만족 비율 → 카테고리 가중치 민감도 (기본 2.0, 10구간 0.1~2.0)",
     )
     budget_max_points: float = Field(
         DEFAULT_BUDGET_MAX_POINTS,

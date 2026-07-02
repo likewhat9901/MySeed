@@ -9,7 +9,13 @@ from pydantic import BaseModel, Field
 
 from app.core.config import get_settings
 from app.services.card_excel_import import build_tb_rows_from_card_excel
-from app.services.supabase_data import fetch_tb_card, insert_tb_records
+from app.services.category_resolution import CategoryEnrichStats, enrich_tb_rows_with_categories
+from app.services.supabase_data import (
+    fetch_ledger_owner_mem_id,
+    fetch_merchant_category_dict,
+    fetch_tb_card,
+    insert_tb_records,
+)
 
 router = APIRouter(tags=["card-import"])
 
@@ -17,6 +23,10 @@ router = APIRouter(tags=["card-import"])
 class CardImportResponse(BaseModel):
     inserted: int = Field(description="삽입한 tb_record 개수")
     warnings: list[str] = Field(default_factory=list)
+    category_stats: dict[str, int] | None = Field(
+        default=None,
+        description="카테고리 자동 분류 통계 (사전/LLM/미해결)",
+    )
 
 
 @router.post(
@@ -79,10 +89,34 @@ async def import_card_statement(
             msg += " " + " | ".join(tail)
         raise HTTPException(status_code=422, detail=msg)
 
+    cat_stats: CategoryEnrichStats | None = None
+    mem_id = fetch_ledger_owner_mem_id(led)
+    if mem_id is not None:
+        try:
+            dict_entries = fetch_merchant_category_dict(mem_id=mem_id)
+            rows_sql, cat_stats, cat_warns = await enrich_tb_rows_with_categories(
+                rows_sql,
+                dict_entries,
+                mem_id=mem_id,
+                use_llm=True,
+            )
+            warns.extend(cat_warns)
+        except Exception as e:
+            warns.append(f"카테고리 자동 분류 생략: {e}")
+
     try:
         rec_ids = insert_tb_records(rows_sql)
     except Exception as e:
         raise HTTPException(status_code=502, detail=f"삽입 실패: {e}") from e
 
     n = len(rec_ids) if rec_ids else len(rows_sql)
-    return CardImportResponse(inserted=n, warnings=warns)
+    stats_payload = None
+    if cat_stats is not None:
+        stats_payload = {
+            "from_dictionary": cat_stats.from_dictionary,
+            "from_llm": cat_stats.from_llm,
+            "dict_learned": cat_stats.dict_learned,
+            "unresolved": cat_stats.unresolved,
+            "total_candidates": cat_stats.total_candidates,
+        }
+    return CardImportResponse(inserted=n, warnings=warns, category_stats=stats_payload)

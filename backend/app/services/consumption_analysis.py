@@ -26,6 +26,7 @@ from app.services.dynamic_reduction import (
     DEFAULT_ALPHA,
     WEIGHT_MAX,
     WEIGHT_MIN,
+    WEIGHT_TIER_COUNT,
     compute_category_weight,
     compute_unsatisfied_rate,
 )
@@ -374,6 +375,7 @@ def analyze_consumption(
             "month_filter": month_filter,
             "weight_min": WEIGHT_MIN,
             "weight_max": WEIGHT_MAX,
+            "weight_tier_count": WEIGHT_TIER_COUNT,
             "amount_rel_weight": AMOUNT_REL_WEIGHT,
             "amount_abs_weight": AMOUNT_ABS_WEIGHT,
         },

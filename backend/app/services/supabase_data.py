@@ -341,6 +341,96 @@ def list_tb_cards() -> list[dict[str, Any]]:
     return list(res.data or [])
 
 
+def fetch_merchant_category_dict(*, mem_id: UUID | None = None) -> list[dict[str, Any]]:
+    """
+    상호명→카테고리 사전 조회.
+    mem_id가 있으면 전역(mem_id IS NULL) + 해당 회원 항목을 반환.
+  """
+    client = _client()
+    if mem_id is None:
+        res = (
+            client.table("tb_merchant_category_dict")
+            .select("dict_id,mem_id,keyword,category,regist_dt")
+            .is_("mem_id", "null")
+            .order("keyword")
+            .execute()
+        )
+        return list(res.data or [])
+
+    global_res = (
+        client.table("tb_merchant_category_dict")
+        .select("dict_id,mem_id,keyword,category,regist_dt")
+        .is_("mem_id", "null")
+        .order("keyword")
+        .execute()
+    )
+    member_res = (
+        client.table("tb_merchant_category_dict")
+        .select("dict_id,mem_id,keyword,category,regist_dt")
+        .eq("mem_id", str(mem_id))
+        .order("keyword")
+        .execute()
+    )
+    return list(global_res.data or []) + list(member_res.data or [])
+
+
+def insert_merchant_category_dict(
+    *,
+    keyword: str,
+    category: str,
+    mem_id: UUID | None = None,
+) -> dict[str, Any]:
+    """사전 항목 1건 추가 (내부용)."""
+    row: dict[str, Any] = {
+        "keyword": keyword.strip(),
+        "category": category.strip(),
+    }
+    if mem_id is not None:
+        row["mem_id"] = str(mem_id)
+    res = _client().table("tb_merchant_category_dict").insert(row).select("*").execute()
+    data = res.data
+    if isinstance(data, list) and data:
+        return data[0]
+    if isinstance(data, dict):
+        return data
+    raise RuntimeError("insert_merchant_category_dict: empty response")
+
+
+def merchant_dict_keyword_taken(keyword: str, *, mem_id: UUID | None = None) -> bool:
+    """동일 scope(전역 mem_id=NULL 또는 특정 회원)에 keyword가 이미 있는지."""
+    norm = keyword.strip().lower()
+    if not norm:
+        return True
+    q = _client().table("tb_merchant_category_dict").select("keyword")
+    if mem_id is None:
+        q = q.is_("mem_id", "null")
+    else:
+        q = q.eq("mem_id", str(mem_id))
+    rows = list(q.execute().data or [])
+    return any(str(r.get("keyword", "")).strip().lower() == norm for r in rows)
+
+
+def save_learned_merchant_category(*, keyword: str, category: str) -> bool:
+    """
+    LLM 분류 결과를 전역 사전(mem_id=NULL)에 저장.
+    이미 같은 keyword가 있으면 삽입하지 않고 False.
+    """
+    kw = keyword.strip()
+    cat = category.strip()
+    if not kw or not cat:
+        return False
+    if merchant_dict_keyword_taken(kw, mem_id=None):
+        return False
+    try:
+        insert_merchant_category_dict(keyword=kw, category=cat, mem_id=None)
+        return True
+    except Exception as e:
+        msg = str(e).lower()
+        if "duplicate" in msg or "23505" in msg or "unique" in msg:
+            return False
+        raise
+
+
 def fetch_tb_card(identifier: str) -> dict[str, Any] | None:
     """
     UUID 형식이면 card_id 로, 아니면 card_name 과 정확 일치로 1건 조회.

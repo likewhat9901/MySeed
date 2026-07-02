@@ -47,7 +47,7 @@ class RecomputeReductionBody(BaseModel):
         DEFAULT_ALPHA,
         ge=0.0,
         le=5.0,
-        description="불만족 비율 → 카테고리 가중치 민감도 (중립=1.0)",
+        description="불만족 비율 → 카테고리 가중치 민감도 (기본 2.0, 10구간 0.1~2.0)",
     )
     budget_max_points: float = Field(30.0, ge=0.0, le=100.0, description="버짓 초과 시 최대 가산 점수")
 
@@ -59,7 +59,7 @@ class RecomputeReductionBody(BaseModel):
         "DB(`tb_record`)를 조회해 `data.reduction_index`를 재계산합니다. "
         "저장 시 `data`에 추가·갱신하는 키는 **`need_type`**, **`reduction_index`** (지출만). "
         "수입(income) 거래는 해당 키를 제거합니다. "
-        "**카테고리 가중치**: 카테고리×월 **불만족 비율**로 산출(모든 카테고리 동일, 중립=1.0). "
+        "**카테고리 가중치**: 6개월 롤링+직전월 블렌드 불만족 비율 → **10구간** (0.1~2.0). "
         "**표본**: 거래일 기준 **6개월 창에 10건 미만** 카테고리는 `reduction_index` 미계산. "
         "**버짓** 초과 시 해당 월 거래 지수에 가산. "
         "Bearer 생략 시 `led_id`로 소유자 access_token 자동 사용."

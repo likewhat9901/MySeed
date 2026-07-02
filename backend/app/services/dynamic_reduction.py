@@ -11,10 +11,13 @@ from typing import Any
 from app.services.excel_record_import import coerce_numeric_amount
 from app.services.record_period import parse_record_date, record_in_date_range
 
-DEFAULT_ALPHA = 1.0
+DEFAULT_ALPHA = 2.0
 DEFAULT_NEUTRAL_WEIGHT = 1.0
-WEIGHT_MIN = 0.7
-WEIGHT_MAX = 1.3
+WEIGHT_MIN = 0.1
+WEIGHT_MAX = 2.0
+WEIGHT_TIER_COUNT = 10
+PREV_MONTH_BLEND = 0.35
+ROLLING_BLEND = 0.65
 DEFAULT_BUDGET_MAX_POINTS = 30.0
 MIN_INDEX_SAMPLE_COUNT = 10
 MIN_INDEX_SAMPLE_MONTHS = 6
@@ -149,15 +152,160 @@ def compute_unsatisfied_rate(satisfied: int, unsatisfied: int) -> float:
     return unsatisfied / total
 
 
+def _weight_for_tier(tier: int) -> float:
+    """구간 인덱스(0~9) → 가중치 0.1~2.0 (10단계 균등)."""
+    tier = int(_clamp(tier, 0, WEIGHT_TIER_COUNT - 1))
+    if WEIGHT_TIER_COUNT <= 1:
+        return WEIGHT_MAX
+    return WEIGHT_MIN + (WEIGHT_MAX - WEIGHT_MIN) * tier / (WEIGHT_TIER_COUNT - 1)
+
+
 def compute_category_weight(unsatisfied_rate: float, *, alpha: float = DEFAULT_ALPHA) -> float:
     """
-    카테고리 가중치. 모든 카테고리 동일 공식.
+    카테고리 가중치. 불만족 비율을 10구간으로 나눠 0.1~2.0에 매핑.
 
-    weight = clamp(1 + alpha × (불만족비율 − 0.5), 0.7, 1.3)
-    불만족 0% → 0.7, 50% → 1.0, 100% → 1.3
+    α로 비율을 0.5 중심 확장한 뒤 구간(0~9)을 정하고, 구간별 가중치는 균등 간격.
     """
-    raw = 1.0 + alpha * (unsatisfied_rate - 0.5)
-    return _clamp(raw, WEIGHT_MIN, WEIGHT_MAX)
+    adjusted = _clamp(0.5 + alpha * (unsatisfied_rate - 0.5), 0.0, 1.0)
+    tier = min(WEIGHT_TIER_COUNT - 1, int(adjusted * WEIGHT_TIER_COUNT))
+    return _weight_for_tier(tier)
+
+
+def build_category_need_type_counts_in_window(
+    rows: list[dict[str, Any]],
+    window_start: date,
+    window_end: date,
+) -> dict[str, tuple[int, int]]:
+    """[window_start, window_end] 카테고리별 (만족, 불만족) 건수."""
+    from app.services.bs_reduction_import import (
+        NEED_TYPE_SATISFIED,
+        expense_category_label,
+        is_expense_record,
+        is_index_skipped_category,
+        need_type_from_data,
+    )
+
+    out: dict[str, list[int]] = defaultdict(lambda: [0, 0])
+    for r in rows:
+        if not is_expense_record(r):
+            continue
+        if not record_in_date_range(r, window_start, window_end):
+            continue
+        data = r.get("data")
+        if not isinstance(data, dict):
+            continue
+        if coerce_numeric_amount(data.get("amount")) is None:
+            continue
+        cat = expense_category_label(data)
+        if is_index_skipped_category(cat):
+            continue
+        need_type, _ = need_type_from_data(data)
+        if need_type == NEED_TYPE_SATISFIED:
+            out[cat][0] += 1
+        else:
+            out[cat][1] += 1
+    return {k: (v[0], v[1]) for k, v in out.items()}
+
+
+def _previous_category_month_key(
+    rows: list[dict[str, Any]],
+    category: str,
+    as_of: date,
+) -> str | None:
+    from app.services.bs_reduction_import import (
+        expense_category_label,
+        is_expense_record,
+        is_index_skipped_category,
+    )
+
+    as_of_month = f"{as_of.year:04d}-{as_of.month:02d}"
+    prev: str | None = None
+    for r in rows:
+        if not is_expense_record(r):
+            continue
+        data = r.get("data")
+        if not isinstance(data, dict):
+            continue
+        if coerce_numeric_amount(data.get("amount")) is None:
+            continue
+        cat = expense_category_label(data)
+        if cat != category or is_index_skipped_category(cat):
+            continue
+        mk = month_key_from_data(data)
+        if mk and mk < as_of_month and (prev is None or mk > prev):
+            prev = mk
+    return prev
+
+
+def _month_need_type_counts(
+    rows: list[dict[str, Any]],
+    category: str,
+    month_key: str,
+) -> tuple[int, int]:
+    from app.services.bs_reduction_import import (
+        NEED_TYPE_SATISFIED,
+        expense_category_label,
+        is_expense_record,
+        is_index_skipped_category,
+        need_type_from_data,
+    )
+
+    satisfied = unsatisfied = 0
+    for r in rows:
+        if not is_expense_record(r):
+            continue
+        data = r.get("data")
+        if not isinstance(data, dict):
+            continue
+        if coerce_numeric_amount(data.get("amount")) is None:
+            continue
+        cat = expense_category_label(data)
+        if cat != category or is_index_skipped_category(cat):
+            continue
+        if month_key_from_data(data) != month_key:
+            continue
+        need_type, _ = need_type_from_data(data)
+        if need_type == NEED_TYPE_SATISFIED:
+            satisfied += 1
+        else:
+            unsatisfied += 1
+    return satisfied, unsatisfied
+
+
+def category_weight_for_record(
+    rows: list[dict[str, Any]],
+    category: str,
+    as_of: date,
+    *,
+    alpha: float = DEFAULT_ALPHA,
+) -> tuple[float, float]:
+    """
+    거래일 기준 카테고리 가중치.
+
+    - 직전 6개월 롤링 불만족 비율(65%) + 직전 거래월 비율(35%) 블렌드
+    - 표본 10건 미만이면 중립 1.0
+    """
+    if not category_meets_index_sample(rows, category, as_of):
+        return DEFAULT_NEUTRAL_WEIGHT, 0.5
+
+    win_start = rolling_window_start(as_of)
+    counts = build_category_need_type_counts_in_window(rows, win_start, as_of)
+    sat, unsat = counts.get(category, (0, 0))
+    rolling_rate = compute_unsatisfied_rate(sat, unsat)
+
+    prev_month = _previous_category_month_key(rows, category, as_of)
+    if prev_month is None:
+        effective_rate = rolling_rate
+    else:
+        prev_end = month_key_end_date(prev_month)
+        if count_category_in_window(rows, category, prev_end) < MIN_INDEX_SAMPLE_COUNT:
+            effective_rate = rolling_rate
+        else:
+            ps, pu = _month_need_type_counts(rows, category, prev_month)
+            prev_rate = compute_unsatisfied_rate(ps, pu)
+            effective_rate = PREV_MONTH_BLEND * prev_rate + ROLLING_BLEND * rolling_rate
+
+    return compute_category_weight(effective_rate, alpha=alpha), effective_rate
 
 
 @dataclass(frozen=True)
@@ -194,12 +342,10 @@ def build_reduction_context(
     budget_max_points: float = DEFAULT_BUDGET_MAX_POINTS,
 ) -> ReductionContext:
     """
-    카테고리×월 가중치: **전월(직전 거래월) need_type**만 반영.
+    카테고리×월 가중치·버짓 보너스.
 
-    - 카테고리 첫 달: weight=1.0 (중립, 고정 출발)
-    - 다음 달부터: 전월 만족/불만족 비율 → weight (0.7~1.3)
-    - recompute로 과거 전체를 돌려도, 각 월은 **그 시점까지 쌓인 순서**로만 갱신
-      (1년치를 한 번에 미래 데이터 섞어 계산하지 않음)
+    가중치: 거래일(월말) 기준 **6개월 롤링 + 직전 거래월** 블렌드 (10구간, 0.1~2.0).
+    버짓: 해당 월 카테고리 지출 합 vs 예산.
     """
     from app.services.bs_reduction_import import (
         NEED_TYPE_SATISFIED,
@@ -250,26 +396,9 @@ def build_reduction_context(
 
     for category, months_map in grid.items():
         budget = budget_lookup.get(_norm_budget_key(category))
-        ordered = sorted(months_map.keys())
-        prev_fb: _MonthFeedback | None = None
-
-        for i, month in enumerate(ordered):
-            fb = months_map[month]
-
-            if i == 0:
-                rate = 0.5
-                weight = DEFAULT_NEUTRAL_WEIGHT
-            else:
-                assert prev_fb is not None
-                prev_month = ordered[i - 1]
-                prev_end = month_key_end_date(prev_month)
-                if count_category_in_window(rows, category, prev_end) < MIN_INDEX_SAMPLE_COUNT:
-                    rate = 0.5
-                    weight = DEFAULT_NEUTRAL_WEIGHT
-                else:
-                    rate = compute_unsatisfied_rate(prev_fb.satisfied, prev_fb.unsatisfied)
-                    weight = compute_category_weight(rate, alpha=alpha)
-
+        for month, fb in months_map.items():
+            as_of = month_key_end_date(month)
+            weight, rate = category_weight_for_record(rows, category, as_of, alpha=alpha)
             unsatisfied_rate_by_key[(category, month)] = rate
             weight_by_key[(category, month)] = weight
 
@@ -278,8 +407,6 @@ def build_reduction_context(
                 over = (fb.amount_sum - budget) / budget
                 bonus = min(over, 1.0) * budget_max_points
             budget_bonus_by_key[(category, month)] = bonus
-
-            prev_fb = fb
 
     return ReductionContext(
         weight_by_key=weight_by_key,
@@ -329,9 +456,12 @@ def compute_dynamic_reduction(
             "neutral_weight": DEFAULT_NEUTRAL_WEIGHT,
             "weight_min": WEIGHT_MIN,
             "weight_max": WEIGHT_MAX,
+            "weight_tier_count": WEIGHT_TIER_COUNT,
             "budget_max_points": budget_max_points,
             "min_index_sample_count": MIN_INDEX_SAMPLE_COUNT,
             "min_index_sample_months": MIN_INDEX_SAMPLE_MONTHS,
+            "prev_month_blend": PREV_MONTH_BLEND,
+            "rolling_blend": ROLLING_BLEND,
         },
         "categories": categories,
         "category_count": len(categories),

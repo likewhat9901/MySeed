@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from app.services import consumption_analysis as ca
 from app.services.bs_reduction_import import NEED_TYPE_UNSATISFIED
 
@@ -19,9 +21,9 @@ def test_over_rate() -> None:
 
 
 def test_category_weight_clamp() -> None:
-    assert ca.compute_category_weight(0.0) == 0.7
-    assert ca.compute_category_weight(0.5) == 1.0
-    assert ca.compute_category_weight(1.0) == 1.3
+    assert ca.compute_category_weight(0.0) == 0.1
+    assert ca.compute_category_weight(0.5) == pytest.approx(1.156, abs=0.001)
+    assert ca.compute_category_weight(1.0) == pytest.approx(2.0)
 
 
 def test_budget_pressure() -> None:
