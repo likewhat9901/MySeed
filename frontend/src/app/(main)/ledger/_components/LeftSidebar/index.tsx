@@ -149,25 +149,25 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
 
   return (
     <aside
-      className={`h-full bg-white border-r border-gray-300 flex flex-col shrink-0 select-none transition-all duration-200 overflow-hidden ${
+      className={`h-full bg-[#1a5c2e] flex flex-col shrink-0 select-none transition-all duration-200 overflow-hidden ${
         isOpen ? 'w-56' : 'w-10'
       }`}
     >
       {isOpen ? (
         <>
           {/* 헤더 */}
-          <div className="flex items-center justify-between px-3 h-8 border-b border-gray-300 shrink-0">
-            <span className="text-[9px] font-bold tracking-[0.18em] uppercase text-gray-500">내 가계부</span>
+          <div className="flex items-center justify-between px-3 h-8 border-b border-white/10 shrink-0">
+            <span className="text-[9px] font-bold tracking-[0.18em] uppercase text-white/50">내 가계부</span>
             <div className="flex items-center gap-1">
               <button
                 onClick={startCreating}
-                className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors"
+                className="w-5 h-5 flex items-center justify-center text-white/50 hover:text-white transition-colors"
               >
                 <Plus size={13} />
               </button>
               <button
                 onClick={onToggle}
-                className="w-5 h-5 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors"
+                className="w-5 h-5 flex items-center justify-center text-white/50 hover:text-white transition-colors"
               >
                 <ChevronSideIcon rotated={false} />
               </button>
@@ -188,15 +188,15 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
                   }}
                   onBlur={cancelCreating}
                   placeholder="가계부 이름…"
-                  className="w-full text-xs px-2 py-1 border border-gray-300 outline-none bg-white focus:border-gray-500"
+                  className="w-full text-xs px-2 py-1 border border-white/20 outline-none bg-white/10 text-white placeholder:text-white/40 focus:border-white/40"
                 />
               </div>
             )}
 
             {loadingLedgers ? (
-              <p className="px-3 py-2 text-xs text-gray-400">불러오는 중…</p>
+              <p className="px-3 py-2 text-xs text-white/40">불러오는 중…</p>
             ) : ledgers.length === 0 && !isCreating ? (
-              <p className="px-3 py-2 text-xs text-gray-400">가계부가 없어요.</p>
+              <p className="px-3 py-2 text-xs text-white/40">가계부가 없어요.</p>
             ) : (
               ledgers.map(ledger => {
                 const isExpanded = openLedgers.has(ledger.led_id)
@@ -204,18 +204,18 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
                 const recs       = recordMap[ledger.led_id]
 
                 return (
-                  <div key={ledger.led_id} className="mx-2 mb-1.5 border border-gray-200">
+                  <div key={ledger.led_id} className="mx-2 mb-1.5 border border-white/10">
                     {/* 가계부 행 */}
                     <div
                       className={`group flex items-center gap-1 px-2 py-1.5 cursor-pointer transition-colors border-l-2 ${
                         isActive
-                          ? 'border-l-gray-800 bg-gray-50 text-gray-900'
-                          : 'border-l-transparent text-gray-600 hover:bg-gray-50'
+                          ? 'border-l-white bg-white/15 text-white'
+                          : 'border-l-transparent text-white/70 hover:bg-white/10'
                       }`}
                     >
                       <button
                         onClick={() => toggleLedger(ledger.led_id)}
-                        className="shrink-0 text-gray-400"
+                        className="shrink-0 text-white/40"
                       >
                         {isExpanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
                       </button>
@@ -225,16 +225,16 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
                       >
                         {ledger.led_name}
                       </span>
-                      <span className="shrink-0 text-[10px] text-gray-400 tabular-nums">
+                      <span className="shrink-0 text-[10px] text-white/35 tabular-nums">
                         {ledgerMeta(recs)}
                       </span>
                     </div>
 
                     {/* record 목록 */}
                     {isExpanded && (
-                      <div className="ml-5 border-l border-gray-200 mb-1">
+                      <div className="ml-5 border-l border-white/10 mb-1">
                         {(recs ?? []).length === 0 ? (
-                          <p className="px-2 py-1 text-[11px] text-gray-300">내역 없음</p>
+                          <p className="px-2 py-1 text-[11px] text-white/25">내역 없음</p>
                         ) : (
                           (recs ?? []).map(rec => {
                             const isRecActive = rec.rec_id === currentRecId
@@ -242,7 +242,7 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
                               <div
                                 key={rec.rec_id}
                                 className={`group flex items-center gap-1.5 px-2 py-1 cursor-pointer transition-colors ${
-                                  isRecActive ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50 hover:text-gray-700'
+                                  isRecActive ? 'bg-white/15 text-white' : 'text-white/60 hover:bg-white/10 hover:text-white/90'
                                 }`}
                                 onClick={() => handleRecordClick(ledger.led_id, rec.rec_id)}
                               >
@@ -250,7 +250,7 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
                                 <span className={`flex-1 text-[11px] truncate ${isRecActive ? 'font-semibold' : ''}`}>{rec.rec_name}</span>
                                 <button
                                   onClick={e => { e.stopPropagation(); handleDeleteRecord(ledger.led_id, rec.rec_id) }}
-                                  className="opacity-0 group-hover:opacity-100 text-gray-300 hover:text-red-400 transition-all"
+                                  className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-red-300 transition-all"
                                 >
                                   <Trash2 size={10} />
                                 </button>
@@ -271,11 +271,11 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
                               }}
                               onBlur={() => { setCreatingRecordFor(null); setNewRecordName('') }}
                               placeholder="내역 이름…"
-                              className="flex-1 min-w-0 text-[11px] px-2 h-[22px] border border-gray-300 outline-none bg-white focus:border-gray-500"
+                              className="flex-1 min-w-0 text-[11px] px-2 h-[22px] border border-white/20 outline-none bg-white/10 text-white placeholder:text-white/40 focus:border-white/40"
                             />
                             <button
                               onMouseDown={e => { e.preventDefault(); handleCreateRecord(ledger.led_id) }}
-                              className="shrink-0 px-1.5 h-[22px] text-[10px] font-bold bg-gray-800 text-white hover:bg-gray-600 transition-colors"
+                              className="shrink-0 px-1.5 h-[22px] text-[10px] font-bold bg-white/20 text-white hover:bg-white/30 transition-colors"
                             >
                               추가
                             </button>
@@ -283,7 +283,7 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
                         ) : (
                           <button
                             onClick={() => { setCreatingRecordFor(ledger.led_id); setNewRecordName('') }}
-                            className="flex items-center gap-1.5 px-2 py-1 text-[11px] text-gray-400 hover:text-gray-700 transition-colors w-full hover:bg-gray-50"
+                            className="flex items-center gap-1.5 px-2 py-1 text-[11px] text-white/40 hover:text-white/80 transition-colors w-full hover:bg-white/10"
                           >
                             <Plus size={10} />
                             새 내역 추가
@@ -302,7 +302,7 @@ export default function LeftSidebar({ isOpen, onToggle }: LeftSidebarProps) {
         <div className="flex flex-col items-center pt-2.5">
           <button
             onClick={onToggle}
-            className="w-7 h-7 flex items-center justify-center text-gray-400 hover:text-gray-700 transition-colors"
+            className="w-7 h-7 flex items-center justify-center text-white/50 hover:text-white transition-colors"
           >
             <ChevronSideIcon rotated={true} />
           </button>

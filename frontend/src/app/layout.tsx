@@ -17,6 +17,7 @@ import I18nProvider from '@/lib/i18n/I18nProvider';
 import { AuthProvider } from '@/features/auth/AuthContext';
 import { getServerUser } from '@/lib/supabase/core/server';
 import type { Locale } from "@/lib/i18n/LocaleContext";
+import AppShell from './AppShell';
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,7 +56,7 @@ export default async function RootLayout({
         <I18nProvider initialLocale={locale}>
           <AuthProvider initialLoggedIn={initialLoggedIn}>
             <Header />
-            {children}
+            <AppShell>{children}</AppShell>
           </AuthProvider>
         </I18nProvider>
       </body>
