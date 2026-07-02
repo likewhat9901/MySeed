@@ -54,10 +54,13 @@ def test_enrich_rows_dictionary_and_llm(monkeypatch) -> None:
     saved: list[tuple[str, str]] = []
 
     async def fake_llm(merchants, **kwargs):
-        return {
-            m: MerchantClassification(category="LLM카테", keyword="알수없는")
-            for m in merchants
-        }
+        return (
+            {
+                m: MerchantClassification(category="LLM카테", keyword="알수없는")
+                for m in merchants
+            },
+            [],
+        )
 
     def fake_save(*, keyword: str, category: str) -> bool:
         saved.append((keyword, category))

@@ -151,7 +151,7 @@ async def resolve_category_for_merchant(
         return CategoryMatch(category=SKIP_INDEX_CATEGORY, source="unresolved")
 
     hints = {norm: amount} if amount is not None else None
-    llm_map = await classify_merchants_with_llm([norm], amount_hints=hints)
+    llm_map, _ = await classify_merchants_with_llm([norm], amount_hints=hints)
     cls = llm_map.get(norm)
     if not cls:
         return CategoryMatch(category=SKIP_INDEX_CATEGORY, source="unresolved")
@@ -233,8 +233,9 @@ async def enrich_tb_rows_with_categories(
                     amount_hints[m] = float(amt) if amt is not None else None
                 except (TypeError, ValueError):
                     amount_hints[m] = None
-        llm_map = await classify_merchants_with_llm(unique_merchants, amount_hints=amount_hints)
+        llm_map, llm_warns = await classify_merchants_with_llm(unique_merchants, amount_hints=amount_hints)
         stats.llm_merchants = list(llm_map.keys())
+        warnings.extend(llm_warns)
 
         if learn_to_dict and llm_map:
             stats.dict_learned = _persist_llm_classifications(llm_map, dict_entries=working_dict)
@@ -271,6 +272,10 @@ async def enrich_tb_rows_with_categories(
     if stats.dict_learned:
         warnings.append(f"사전 자동 학습: {stats.dict_learned}건 저장")
     if stats.unresolved:
-        warnings.append(f"카테고리 미해결(미분류 유지): {stats.unresolved}건")
+        no_merchant = stats.unresolved  # includes LLM misses; message below is aggregate
+        warnings.append(
+            f"카테고리 미해결(미분류 유지): {no_merchant}건 "
+            "(상호명 없음 또는 LLM 분류 실패 — warnings 상단 LLM 메시지 확인)"
+        )
 
     return out, stats, warnings
