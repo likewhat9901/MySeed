@@ -102,3 +102,27 @@ def test_enrich_rows_dictionary_and_llm(monkeypatch) -> None:
     assert stats.from_llm == 1
     assert stats.dict_learned == 1
     assert saved == [("알수없는", "LLM카테")]
+
+
+def test_llm_fail_uses_heuristic_fallback(monkeypatch) -> None:
+    async def fake_llm(merchants, **kwargs):
+        return ({}, ["Gemini API 할당량 초과(429)."])
+
+    monkeypatch.setattr(cr, "classify_merchants_with_llm", fake_llm)
+
+    rows = [
+        {
+            "led_id": str(uuid4()),
+            "data_type": "expense",
+            "data": {"title": "쿠팡_주문123", "amount": 3000},
+        },
+    ]
+
+    async def run():
+        return await cr.enrich_tb_rows_with_categories(rows, [], use_llm=True)
+
+    enriched, stats, warns = asyncio.run(run())
+    assert enriched[0]["data"]["category"] in ("쇼핑", "홈쇼핑", "기타")
+    assert stats.from_llm == 0
+    assert stats.from_heuristic + stats.from_fallback == 1
+    assert any("할당량" in w for w in warns)

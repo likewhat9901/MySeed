@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
+import re
 import unicodedata
 from dataclasses import dataclass
 from typing import Any
@@ -12,7 +14,12 @@ from openai import AsyncOpenAI
 from pydantic import BaseModel, Field, ValidationError
 
 from app.services.bs_reduction_import import CATEGORY_RULES
-from app.services.llm_client import build_async_openai_client, resolve_llm_client_config
+from app.services.llm_client import (
+    GEMINI_BATCH_SIZE,
+    build_async_openai_client,
+    is_llm_quota_error,
+    resolve_llm_client_config,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,6 +36,7 @@ SUGGESTED_CATEGORIES = list(CATEGORY_RULES.keys()) + [
 ]
 
 MAX_BATCH_SIZE = 40
+MAX_LLM_RETRIES = 3
 
 
 @dataclass(frozen=True)
@@ -87,8 +95,20 @@ def _match_row_to_input(batch: list[str], row_merchant: str) -> str | None:
     return None
 
 
+def _extract_json_object(raw: str) -> str:
+    text = raw.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```(?:json)?\s*", "", text)
+        text = re.sub(r"\s*```$", "", text)
+    start = text.find("{")
+    end = text.rfind("}")
+    if start >= 0 and end > start:
+        return text[start : end + 1]
+    return text
+
+
 def _parse_llm_batch(batch: list[str], raw: str) -> dict[str, MerchantClassification]:
-    parsed = _LLMCategoryPayload.model_validate_json(raw)
+    parsed = _LLMCategoryPayload.model_validate_json(_extract_json_object(raw))
     out: dict[str, MerchantClassification] = {}
     for row in parsed.results:
         category = row.category.strip()
@@ -102,26 +122,49 @@ def _parse_llm_batch(batch: list[str], raw: str) -> dict[str, MerchantClassifica
     return out
 
 
+def _retry_delay_seconds(exc: BaseException, attempt: int) -> float:
+    if is_llm_quota_error(exc):
+        m = re.search(r"retry in ([0-9.]+)s", str(exc), re.I)
+        if m:
+            return min(float(m.group(1)) + 1.0, 90.0)
+        return min(10.0 * (attempt + 1), 60.0)
+    return min(2.0 * (attempt + 1), 8.0)
+
+
 async def _classify_batch(
     client: AsyncOpenAI,
     model: str,
     batch: list[str],
     *,
     amount_hints: dict[str, float | None],
+    use_json_mode: bool,
 ) -> dict[str, MerchantClassification]:
     payload_items = [{"merchant": m, "amount": amount_hints.get(m)} for m in batch]
     user = json.dumps({"merchants": payload_items}, ensure_ascii=False)
-    completion = await client.chat.completions.create(
-        model=model,
-        messages=[
+    kwargs: dict[str, Any] = {
+        "model": model,
+        "messages": [
             {"role": "system", "content": _build_system_prompt()},
             {"role": "user", "content": user},
         ],
-        response_format={"type": "json_object"},
-        temperature=0.2,
-    )
-    raw = completion.choices[0].message.content or "{}"
-    return _parse_llm_batch(batch, raw)
+        "temperature": 0.2,
+    }
+    if use_json_mode:
+        kwargs["response_format"] = {"type": "json_object"}
+
+    last_err: Exception | None = None
+    for attempt in range(MAX_LLM_RETRIES):
+        try:
+            completion = await client.chat.completions.create(**kwargs)
+            raw = completion.choices[0].message.content or "{}"
+            return _parse_llm_batch(batch, raw)
+        except Exception as e:
+            last_err = e
+            if attempt >= MAX_LLM_RETRIES - 1:
+                break
+            await asyncio.sleep(_retry_delay_seconds(e, attempt))
+    assert last_err is not None
+    raise last_err
 
 
 async def classify_merchants_with_llm(
@@ -153,37 +196,61 @@ async def classify_merchants_with_llm(
     hints = amount_hints or {}
     out: dict[str, MerchantClassification] = {}
     batch_errors = 0
+    quota_hit = False
+    batch_size = GEMINI_BATCH_SIZE if cfg.provider == "gemini" else MAX_BATCH_SIZE
+    use_json_mode = cfg.provider != "gemini"
 
-    for i in range(0, len(unique), MAX_BATCH_SIZE):
-        batch = unique[i : i + MAX_BATCH_SIZE]
+    for i in range(0, len(unique), batch_size):
+        batch = unique[i : i + batch_size]
         try:
-            batch_out = await _classify_batch(client, cfg.model, batch, amount_hints=hints)
+            batch_out = await _classify_batch(
+                client,
+                cfg.model,
+                batch,
+                amount_hints=hints,
+                use_json_mode=use_json_mode,
+            )
             out.update(batch_out)
         except (ValidationError, json.JSONDecodeError, IndexError) as e:
             batch_errors += 1
             logger.warning("LLM category parse failed for batch: %s", e)
         except Exception as e:
             batch_errors += 1
+            if is_llm_quota_error(e):
+                quota_hit = True
             logger.warning("LLM category request failed (%s): %s", cfg.provider, e)
 
     missing = [m for m in unique if m not in out]
-    for merchant in missing:
-        try:
-            single = await _classify_batch(client, cfg.model, [merchant], amount_hints=hints)
-            out.update(single)
-        except Exception as e:
-            logger.warning("LLM single retry failed for %r: %s", merchant, e)
+    if missing and not quota_hit:
+        for merchant in missing:
+            try:
+                single = await _classify_batch(
+                    client,
+                    cfg.model,
+                    [merchant],
+                    amount_hints=hints,
+                    use_json_mode=use_json_mode,
+                )
+                out.update(single)
+            except Exception as e:
+                if is_llm_quota_error(e):
+                    quota_hit = True
+                logger.warning("LLM single retry failed for %r: %s", merchant, e)
 
     still_missing = [m for m in unique if m not in out]
+    if quota_hit:
+        warnings.append(
+            "Gemini API 할당량 초과(429). Google AI Studio 결제·할당량을 확인하거나 "
+            "OpenAI 키(sk-…)를 OPENAI_API_KEY에 설정하세요."
+        )
     if still_missing:
         warnings.append(
-            f"LLM 분류 실패 {len(still_missing)}건 "
-            f"(provider={cfg.provider}, model={cfg.model}"
+            f"LLM 분류 실패 {len(still_missing)}개 상호명 "
+            f"({len(still_missing)}건 거래에 영향, provider={cfg.provider}, model={cfg.model}"
             + (f", batch_errors={batch_errors}" if batch_errors else "")
             + ")"
         )
-    elif cfg.provider == "gemini":
-        warnings.append(f"LLM 분류: Gemini 사용 ({cfg.model})")
+    elif cfg.provider == "gemini" and out:
+        warnings.append(f"LLM 분류: Gemini 사용 ({cfg.model}), {len(out)}개 상호명")
 
     return out, warnings
-

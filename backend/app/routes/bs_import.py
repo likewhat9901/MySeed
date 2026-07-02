@@ -98,7 +98,10 @@ async def import_household_book(
         stats_payload = {
             "from_dictionary": cat_stats.from_dictionary,
             "from_llm": cat_stats.from_llm,
+            "from_heuristic": cat_stats.from_heuristic,
+            "from_fallback": cat_stats.from_fallback,
             "dict_learned": cat_stats.dict_learned,
+            "no_merchant": cat_stats.no_merchant,
             "unresolved": cat_stats.unresolved,
             "total_candidates": cat_stats.total_candidates,
         }

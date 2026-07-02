@@ -12,6 +12,7 @@ from app.core.config import Settings, get_settings
 
 GEMINI_OPENAI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/openai/"
 DEFAULT_GEMINI_MODEL = "gemini-2.0-flash"
+GEMINI_BATCH_SIZE = 12
 
 
 @dataclass(frozen=True)
@@ -57,3 +58,8 @@ def build_async_openai_client(cfg: LlmClientConfig) -> AsyncOpenAI | None:
     if cfg.base_url:
         kwargs["base_url"] = cfg.base_url
     return AsyncOpenAI(**kwargs)
+
+
+def is_llm_quota_error(exc: BaseException) -> bool:
+    msg = str(exc).lower()
+    return "429" in msg or "quota" in msg or "resource_exhausted" in msg

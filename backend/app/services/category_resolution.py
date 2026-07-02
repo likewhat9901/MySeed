@@ -8,13 +8,13 @@ from dataclasses import dataclass, field
 from typing import Any, Literal
 from uuid import UUID
 
-from app.services.bs_reduction_import import SKIP_INDEX_CATEGORY
+from app.services.bs_reduction_import import SKIP_INDEX_CATEGORY, category_for_index
 from app.services.llm_category_classification import MerchantClassification, classify_merchants_with_llm
 from app.services.supabase_data import save_learned_merchant_category
 
 logger = logging.getLogger(__name__)
 
-CategorySource = Literal["dictionary", "llm", "skipped", "unresolved"]
+CategorySource = Literal["dictionary", "llm", "heuristic", "fallback", "skipped", "unresolved"]
 
 
 def _norm_merchant(v: Any) -> str:
@@ -55,10 +55,17 @@ class CategoryEnrichStats:
     total_candidates: int = 0
     from_dictionary: int = 0
     from_llm: int = 0
+    from_heuristic: int = 0
+    from_fallback: int = 0
     dict_learned: int = 0
+    no_merchant: int = 0
     unresolved: int = 0
     skipped: int = 0
     llm_merchants: list[str] = field(default_factory=list)
+
+
+def _heuristic_category(merchant: str) -> str:
+    return category_for_index("", merchant, "", "")
 
 
 def _dict_entry_sort_key(entry: dict[str, Any], mem_id: UUID | None) -> tuple[int, int, str]:
@@ -153,13 +160,15 @@ async def resolve_category_for_merchant(
     hints = {norm: amount} if amount is not None else None
     llm_map, _ = await classify_merchants_with_llm([norm], amount_hints=hints)
     cls = llm_map.get(norm)
-    if not cls:
-        return CategoryMatch(category=SKIP_INDEX_CATEGORY, source="unresolved")
+    if cls:
+        if learn_to_dict:
+            _persist_llm_classifications({norm: cls}, dict_entries=dict_entries)
+        return CategoryMatch(category=cls.category, source="llm", matched_keyword=cls.keyword)
 
-    if learn_to_dict:
-        _persist_llm_classifications({norm: cls}, dict_entries=dict_entries)
-
-    return CategoryMatch(category=cls.category, source="llm", matched_keyword=cls.keyword)
+    guessed = _heuristic_category(norm)
+    if guessed and guessed != "기타":
+        return CategoryMatch(category=guessed, source="heuristic")
+    return CategoryMatch(category="기타", source="fallback")
 
 
 async def enrich_tb_rows_with_categories(
@@ -197,7 +206,7 @@ async def enrich_tb_rows_with_categories(
             continue
         merchant = merchant_name_from_data(data)
         if not merchant:
-            stats.unresolved += 1
+            stats.no_merchant += 1
             continue
         pending_indices.append(i)
         merchant_by_index[i] = merchant
@@ -218,7 +227,13 @@ async def enrich_tb_rows_with_categories(
         elif use_llm:
             llm_needed.append(i)
         else:
-            stats.unresolved += 1
+            guessed = _heuristic_category(merchant)
+            if guessed and guessed != "기타":
+                dict_resolved[i] = CategoryMatch(category=guessed, source="heuristic")
+                stats.from_heuristic += 1
+            else:
+                dict_resolved[i] = CategoryMatch(category="기타", source="fallback")
+                stats.from_fallback += 1
 
     llm_map: dict[str, MerchantClassification] = {}
     if llm_needed:
@@ -259,23 +274,28 @@ async def enrich_tb_rows_with_categories(
             data["category_matched_keyword"] = cls.keyword
             stats.from_llm += 1
         else:
-            stats.unresolved += 1
-            continue
+            guessed = _heuristic_category(merchant)
+            if guessed and guessed != "기타":
+                data["category"] = guessed
+                data["category_source"] = "heuristic"
+                stats.from_heuristic += 1
+            else:
+                data["category"] = "기타"
+                data["category_source"] = "fallback"
+                stats.from_fallback += 1
 
         row["data"] = data
         out[i] = row
 
-    if stats.from_dictionary or stats.from_llm:
+    if stats.from_dictionary or stats.from_llm or stats.from_heuristic or stats.from_fallback:
         warnings.append(
-            f"카테고리 자동 분류: 사전 {stats.from_dictionary}건, LLM {stats.from_llm}건"
+            "카테고리 자동 분류: "
+            f"사전 {stats.from_dictionary}건, LLM {stats.from_llm}건, "
+            f"키워드 {stats.from_heuristic}건, 기타 {stats.from_fallback}건"
         )
     if stats.dict_learned:
         warnings.append(f"사전 자동 학습: {stats.dict_learned}건 저장")
-    if stats.unresolved:
-        no_merchant = stats.unresolved  # includes LLM misses; message below is aggregate
-        warnings.append(
-            f"카테고리 미해결(미분류 유지): {no_merchant}건 "
-            "(상호명 없음 또는 LLM 분류 실패 — warnings 상단 LLM 메시지 확인)"
-        )
+    if stats.no_merchant:
+        warnings.append(f"상호명 없음(미분류 유지): {stats.no_merchant}건")
 
     return out, stats, warnings
